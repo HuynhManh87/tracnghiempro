@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.7'
+    appVersion:'4.12'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.7',
+    appVersion:'4.12',
     storageFormat:'json-v1'
   };
 }
@@ -1150,7 +1150,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.7',
+    appVersion:'4.12',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1187,7 +1187,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.7',
+    appVersion:'4.12',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -2425,35 +2425,62 @@ function fillDarknessAtSheet(x,y,rSheet=2.8){
   }
   return n?sum/n:0;
 }
+// V4.12 — Bubble Ink Score
+// Không chỉ nhìn đúng một lõi rất nhỏ ở tâm ô. Với bút chì/bút bi tô lệch tâm,
+// cách cũ dễ coi là Trống dù học sinh đã tô. Điểm mực mới lấy vùng trong lớn hơn,
+// ưu tiên các pixel tối và thử lệch nhẹ quanh tâm dự kiến để chịu được sai số phối cảnh.
+function bubbleInkScoreAtSheet(x,y,rSheet=3.5){
+  const sc=Math.max(.3,scaleAt(x,y));
+  const innerSheet=Math.max(1.9,Math.min(3.05,rSheet*.76));
+  const sampleAt=(sx,sy)=>{
+    const p=mapSheet(sx,sy),r=Math.max(1.1,innerSheet*sc);
+    const x0=Math.max(0,Math.floor(p.x-r)),y0=Math.max(0,Math.floor(p.y-r));
+    const x1=Math.min(canvas.width-1,Math.ceil(p.x+r)),y1=Math.min(canvas.height-1,Math.ceil(p.y+r));
+    if(x1<x0||y1<y0)return 0;
+    const data=ctx.getImageData(x0,y0,x1-x0+1,y1-y0+1).data,arr=[];let k=0,sum=0,darkN=0,n=0;
+    for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++,k+=4){
+      const dx=xx-p.x,dy=yy-p.y;if(dx*dx+dy*dy>r*r)continue;
+      const g=.299*data[k]+.587*data[k+1]+.114*data[k+2],d=(255-g)/255;
+      arr.push(d);sum+=d;if(d>.20)darkN++;n++;
+    }
+    if(!n)return 0;
+    arr.sort((a,b)=>a-b);
+    const start=Math.floor(arr.length*.62);let top=0,tn=0;
+    for(let i=start;i<arr.length;i++){top+=arr[i];tn++}
+    const mean=sum/n,topMean=tn?top/tn:mean,darkRatio=darkN/n;
+    return mean*.43+topMean*.42+darkRatio*.15;
+  };
+  // Tâm dự kiến có thể lệch nhẹ do camera nghiêng/cong giấy. Lệch 0.8 đơn vị
+  // vẫn nằm xa viền in của vòng tròn 12px nên không hút nhầm đường viền.
+  const d=.8,pts=[[0,0],[d,0],[-d,0],[0,d],[0,-d]];
+  let best=0;for(const [dx,dy] of pts)best=Math.max(best,sampleAt(x+dx,y+dy));
+  return best;
+}
 function adaptiveBubbleChoice(points,rSheet=3.5,strict=false){
-  const vals=points.map(o=>fillDarknessAtSheet(o.x,o.y,rSheet));
+  const vals=points.map(o=>bubbleInkScoreAtSheet(o.x,o.y,rSheet));
   const order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
   const best=order[0]||{v:0,i:-1},second=order[1]||{v:0,i:-1},sorted=[...vals].sort((a,b)=>a-b);
 
-  // V4.11 FIX PHẦN II: với đúng 2 lựa chọn Đ/S, median kiểu mảng 4 lựa chọn
-  // sẽ trùng với giá trị lớn nhất => delta luôn bằng 0 => mọi ý bị đọc là Trống.
-  // Với cặp Đ/S, dùng ô còn lại làm nền so sánh trực tiếp.
+  // Hai lựa chọn Đ/S: so trực tiếp hai ô. Ngưỡng được hạ vừa đủ để nhận bút chì
+  // nhưng vẫn yêu cầu độ chênh giữa hai ô nhằm tránh coi vòng tròn trắng là đã tô.
   if(vals.length===2){
-    const baseline=second.v;
-    const delta=best.v-baseline;
-    const minBest=strict?.15:.13;
-    const minDelta=strict?.055:.042;
-    // Cả hai đều đủ đậm và gần nhau: học sinh tô 2 ô / vết mực lan sang cả hai.
-    if(best.v>=minBest&&second.v>=minBest&&second.v>best.v*.84)
+    const baseline=second.v,delta=best.v-baseline;
+    const minBest=strict?.115:.10,minDelta=strict?.034:.024;
+    if(best.v>=minBest&&second.v>=minBest&&second.v>best.v*.86)
       return{idx:-2,state:'multi',vals,best:best.v,second:second.v,median:baseline,delta};
     if(best.v<minBest||delta<minDelta)
       return{idx:-1,state:'blank',vals,best:best.v,second:second.v,median:baseline,delta};
     return{idx:best.i,state:'one',vals,best:best.v,second:second.v,median:baseline,delta};
   }
 
-  const median=sorted[Math.floor(sorted.length/2)]||0;
-  const delta=best.v-median;
-  const minBest=strict?.18:.16,minDelta=strict?.075:.065;
-  if(best.v<minBest||delta<minDelta)return{idx:-1,state:'blank',vals,best:best.v,second:second.v,median,delta};
-  // Chỉ coi là nhiều ô khi 2 ô cùng thực sự nổi bật so với nền.
-  if(second.v>=minBest&&second.v>best.v*.88&&(second.v-median)>minDelta*.8)
-    return{idx:-2,state:'multi',vals,best:best.v,second:second.v,median,delta};
-  return{idx:best.i,state:'one',vals,best:best.v,second:second.v,median,delta};
+  // Với 4 lựa chọn, nền nên lấy trung bình hai ô nhạt nhất thay vì phần tử giữa.
+  // Cách này ổn định hơn khi một ô bị bóng/viền in hơi đậm.
+  const baseline=sorted.length>=2?(sorted[0]+sorted[1])/2:(sorted[0]||0);
+  const delta=best.v-baseline,minBest=strict?.125:.105,minDelta=strict?.040:.028;
+  if(best.v<minBest||delta<minDelta)return{idx:-1,state:'blank',vals,best:best.v,second:second.v,median:baseline,delta};
+  if(second.v>=minBest&&second.v>best.v*.87&&(second.v-baseline)>minDelta*.72)
+    return{idx:-2,state:'multi',vals,best:best.v,second:second.v,median:baseline,delta};
+  return{idx:best.i,state:'one',vals,best:best.v,second:second.v,median:baseline,delta};
 }
 function detectOne(points,rSheet=3.5){return adaptiveBubbleChoice(points,rSheet,false)}
 function detectOneTuned(points,rSheet=3.1,minDark=.11,multiRatio=.80){return adaptiveBubbleChoice(points,rSheet,true)}

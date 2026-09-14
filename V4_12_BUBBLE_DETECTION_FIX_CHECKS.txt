@@ -1,0 +1,8 @@
+OMR Mobile v4.12 — Bubble detection fix
+
+- Bubble detector samples a larger inner area instead of a tiny center core.
+- Uses mean + darkest-pixel mean + dark-pixel ratio to recognize pencil/partial fills.
+- Tests small center offsets to tolerate camera perspective/local warp.
+- Lower but comparative thresholds to reduce false blank results.
+- Separate logic retained for 2-choice True/False.
+- Final grade and realtime both use the same adaptiveBubbleChoice.
