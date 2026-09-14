@@ -206,7 +206,7 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 .liveCameraActions .btn{width:auto}
 .liveCameraStage{display:none;position:relative;margin-top:10px;border-radius:12px;overflow:hidden;background:#111;min-height:280px}
 .liveCameraStage.open{display:block}
-#liveVideo{display:block;width:100%;max-height:68vh;min-height:280px;object-fit:contain;background:#111}
+#liveVideo{display:block;width:100%;max-height:68vh;min-height:280px;object-fit:contain;background:#111;transform:translateZ(0);backface-visibility:hidden}
 .liveGuideFrame{position:absolute;left:8%;right:8%;top:5%;bottom:5%;border:2px solid rgba(255,255,255,.9);border-radius:10px;pointer-events:none}
 .liveGuideFrame:before,.liveGuideFrame:after{content:"";position:absolute;width:36px;height:36px;border-color:#22c55e;border-style:solid}
 .liveGuideFrame:before{left:-2px;top:-2px;border-width:4px 0 0 4px}
@@ -263,7 +263,7 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 
 
 /* ===== v4.6 Realtime OMR ===== */
-#liveRealtimeCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
+#liveRealtimeCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;background:transparent;will-change:contents}
 .liveGuideFrame{z-index:4}
 .liveCameraHud{z-index:6}
 .liveRealtimeScore{
@@ -278,6 +278,6 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 .liveOmrLegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:#64748b}
 .liveOmrLegend span{display:inline-flex;align-items:center;gap:5px}.liveOmrDot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid currentColor}
 .liveOmrDot.green{color:#00d26a}.liveOmrDot.red{color:#ff3040}.liveOmrDot.yellow{color:#ffd400}
-@media(max-width:700px){.liveRealtimeScore{left:7px;top:7px;min-width:185px;padding:7px 9px}.liveRtExam{font-size:15px}.liveRtTotal{font-size:19px}}
+@media(max-width:700px){.liveRealtimeScore{left:7px;top:7px;min-width:185px;padding:7px 9px;backdrop-filter:none}.liveRtExam{font-size:15px}.liveRtTotal{font-size:19px}}
 
 .liveAutoToggle{display:inline-flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-weight:700;font-size:14px;cursor:pointer}.liveAutoToggle input{width:18px;height:18px;margin:0}

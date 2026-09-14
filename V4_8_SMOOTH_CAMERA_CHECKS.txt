@@ -1,0 +1,8 @@
+v4.8 Smooth Camera
+
+1. Camera preview uses up to 1280x720 @ 30fps where supported.
+2. Realtime OMR analysis is adaptive: 900/1050/1200 px depending on device capability.
+3. OMR analysis cadence is 520/440/380 ms depending on device capability.
+4. Realtime overlay canvas is transparent and never redraws the camera frame.
+5. Video remains the visible live source; overlay draws only markers and answer rings.
+6. Final auto-grade still attempts ImageCapture.takePhoto() for high-resolution static capture.

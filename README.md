@@ -191,10 +191,18 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Giữ nguyên Realtime OMR v4.6 và chế độ Chụp/Chọn ảnh dự phòng.
 
 
-## v4.7 — Auto Scan / Auto Grade
+## v4.8 — Auto Scan / Auto Grade
 - Bật mặc định chế độ **Tự chấm khi ổn định**.
 - Camera liên tục nhận 4 marker chính, marker phụ, Mã đề và đáp án.
 - Chỉ tự chụp khi phiếu gần như đứng yên và cùng kết quả được xác nhận 3 khung hình liên tiếp.
 - Khi đủ 3/3, app tự lấy ảnh HD rồi chấm chính thức, không cần bấm nút chụp.
 - Sau khi chấm thành công, camera tạm khóa để tránh chấm trùng cùng một phiếu; dùng **Quét bài tiếp theo** để mở lại.
 - Nút **Chụp & chấm ngay** vẫn được giữ làm phương án dự phòng.
+
+
+## v4.8 Smooth Camera
+- Luồng video camera không còn bị canvas OMR phủ bằng ảnh đã xử lý.
+- Canvas realtime chỉ vẽ annotation trong suốt.
+- Preview ưu tiên 720p/30fps; ảnh chấm cuối vẫn cố lấy HD bằng ImageCapture.
+- Phân tích OMR được giảm kích thước và điều chỉnh nhịp theo cấu hình thiết bị.
+- Mục tiêu: giảm giật/lag rõ rệt khi đưa phiếu vào camera.
