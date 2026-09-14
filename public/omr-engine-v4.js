@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false;
+let templates=[],assignments={},studentRoster=[],imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.4.1'
+    appVersion:'4.4.2'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.4.1',
+    appVersion:'4.4.2',
     storageFormat:'json-v1'
   };
 }
@@ -1150,7 +1150,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4.1',
+    appVersion:'4.4.2',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1187,7 +1187,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4.1',
+    appVersion:'4.4.2',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -1933,10 +1933,11 @@ function setLiveStatus(msg,type=''){
   const e=$('#liveCameraStatus');if(!e)return;
   e.className='liveCameraStatus'+(type?' '+type:'');e.textContent=msg;
 }
-function setLiveHud(main='--',aux='--',stable=0,state=''){
-  const a=$('#liveMainMarkerHud'),b=$('#liveAuxMarkerHud'),c=$('#liveStableHud'),p=$('#liveStableProgress');
+function setLiveHud(main='--',aux='--',stable=0,state='',exam='---',examOk=false){
+  const a=$('#liveMainMarkerHud'),b=$('#liveAuxMarkerHud'),e=$('#liveExamHud'),c=$('#liveStableHud'),p=$('#liveStableProgress');
   if(a){a.textContent=`Marker góc: ${main}/4`;a.className='liveHudChip '+(main===4?'ok':main==='--'?'':'err')}
   if(b){b.textContent=`Marker phụ: ${aux}/6`;b.className='liveHudChip '+(Number(aux)>=4?'ok':aux==='--'?'':'warn')}
+  if(e){e.textContent=`Mã đề: ${exam||'---'}`;e.className='liveHudChip '+(examOk?'ok':exam==='---'?'':'warn')}
   if(c){c.textContent=`Giữ yên: ${stable}/3`;c.className='liveHudChip '+(stable>=3?'ok':state==='bad'?'warn':'')}
   if(p)p.style.width=Math.max(0,Math.min(100,stable/3*100))+'%';
 }
@@ -1947,7 +1948,7 @@ function updateTorchButton(){
   btn.disabled=!liveRunning||!supported;btn.textContent=liveTorchOn?'Tắt đèn':'Bật đèn';
 }
 function stopLiveCamera(keepMessage=false){
-  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;
+  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;liveExamCode='';liveExamStable=0;
   if(liveTimer){clearInterval(liveTimer);liveTimer=null}
   if(liveStream){liveStream.getTracks().forEach(t=>{try{t.stop()}catch{}});liveStream=null}
   const video=$('#liveVideo');if(video){try{video.pause()}catch{};video.srcObject=null}
@@ -1987,7 +1988,9 @@ async function captureLiveAndGrade(){
   liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang lấy khung hình và chấm…','ok');
   try{
     const good=await freezeLiveFrame();
-    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
+    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
+    const t=cur($('#scanTpl').value),finalExam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
+    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Khung hình rõ nhưng chưa đọc đủ Mã đề. Hãy kiểm tra khối TÔ MÃ ĐỀ và tiếp tục quét.':`Đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
     grade();
     if(lastGrade){
       lastGrade.liveCamera=true;
@@ -2012,15 +2015,19 @@ function processLiveFrame(){
       liveStableFrames=0;livePrevMarkers=null;drawOverlay();setLiveHud(0,0,0,'bad');
       setLiveStatus('Chưa thấy đủ 4 marker góc. Đưa trọn tờ giấy vào khung.','warn');return;
     }
-    scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();
-    const current=markerPoints.map(p=>({x:p.x,y:p.y})),motion=liveMarkerMotion(livePrevMarkers,current),q=scanQuality;
-    const qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4,still=motion<0.012;
-    if(qualityGood&&still)liveStableFrames=Math.min(3,liveStableFrames+1);else liveStableFrames=0;
-    livePrevMarkers=current;setLiveHud(4,q?.auxCount??0,liveStableFrames,qualityGood?'good':'bad');
+    scanQuality=analyzeScanQuality();updateScanQualityUI();
+    const current=markerPoints.map(p=>({x:p.x,y:p.y})),motion=liveMarkerMotion(livePrevMarkers,current),q=scanQuality,t=cur($('#scanTpl').value),exam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
+    const qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4,still=motion<0.012,examGood=!exam.bad&&exam.exists;
+    if(examGood){if(liveExamCode===exam.value)liveExamStable=Math.min(3,liveExamStable+1);else{liveExamCode=exam.value;liveExamStable=1}}else{liveExamCode='';liveExamStable=0}
+    if(qualityGood&&still&&examGood&&liveExamStable>=2)liveStableFrames=Math.min(3,liveStableFrames+1);else liveStableFrames=0;
+    livePrevMarkers=current;drawOverlay();setLiveHud(4,q?.auxCount??0,liveStableFrames,(qualityGood&&examGood)?'good':'bad',exam.bad?'???':exam.value,examGood);
     if(!q?.ok)setLiveStatus(q?.message||'Ảnh chưa đạt chuẩn.','warn');
     else if(q.mode!=='v2')setLiveStatus('Đã thấy 4 marker góc nhưng thiếu marker phụ. Đưa camera gần hơn hoặc dùng phiếu Auto OMR v2.','warn');
-    else if(!still)setLiveStatus(`Đã nhận ${q.auxCount}/6 marker phụ. Giữ điện thoại và phiếu yên…`,'warn');
-    else if(liveStableFrames<3)setLiveStatus(`Ảnh đạt chuẩn. Giữ yên thêm ${3-liveStableFrames} nhịp…`,'ok');
+    else if(exam.bad)setLiveStatus('Chưa đọc đủ Mã đề. App đọc ở khối TÔ MÃ ĐỀ (các vòng tròn), không đọc 3 ô vuông viết tay phía trên. Hãy tô đủ mã đề và đưa camera gần hơn.','warn');
+    else if(!exam.exists)setLiveStatus(`Đang đọc mã ${exam.value}, nhưng mẫu hiện tại chỉ có: ${exam.expected.join(', ')}. Kiểm tra lại mẫu hoặc phần tô Mã đề.`,'warn');
+    else if(!still)setLiveStatus(`Đã nhận Mã đề ${exam.value} và ${q.auxCount}/6 marker phụ. Giữ điện thoại và phiếu yên…`,'warn');
+    else if(liveExamStable<2)setLiveStatus(`Đã đọc Mã đề ${exam.value}. Giữ yên để xác nhận lại mã đề…`,'ok');
+    else if(liveStableFrames<3)setLiveStatus(`Mã đề ${exam.value} đã ổn định. Giữ yên thêm ${3-liveStableFrames} nhịp…`,'ok');
     if(liveStableFrames>=3)captureLiveAndGrade();
   }catch(e){console.warn('Live OMR frame error',e);liveStableFrames=0;setLiveStatus('Không xử lý được khung hình camera.','err')}
 }
@@ -2034,7 +2041,7 @@ async function startLiveCamera(){
   try{
     liveStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:1920},height:{ideal:1080}}});
     const video=$('#liveVideo');video.srcObject=liveStream;await video.play();
-    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;
+    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;
     $('#liveCameraStage')?.classList.add('open');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
     updateTorchButton();setLiveHud('--','--',0);setLiveStatus('Camera đã mở. Đưa trọn phiếu A4 vào khung.');
     liveTimer=setInterval(processLiveFrame,480);setTimeout(processLiveFrame,250);
@@ -2054,7 +2061,7 @@ async function toggleLiveTorch(){
 }
 function resumeLiveForNextSheet(){
   if(!liveRunning){startLiveCamera();return}
-  clearResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;
+  clearResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;
   $('#nextLiveSheet').style.display='none';setLiveHud('--','--',0);setLiveStatus('Sẵn sàng. Đưa bài tiếp theo vào khung.');
 }
 $('#startLiveCamera').onclick=startLiveCamera;
@@ -2142,9 +2149,11 @@ canvas.onclick=e=>{if(!manualMode||!imgState||markerPoints.length>=4)return;cons
 function scaleAt(x,y){const p=mapSheet(x,y),px=mapSheet(x+10,y),py=mapSheet(x,y+10);return(Math.hypot(px.x-p.x,px.y-p.y)+Math.hypot(py.x-p.x,py.y-p.y))/20}
 function darknessAtSheet(x,y,rSheet=4){const p=mapSheet(x,y),sc=Math.max(.3,scaleAt(x,y)),r=Math.max(2,rSheet*sc),x0=Math.max(0,Math.floor(p.x-r)),y0=Math.max(0,Math.floor(p.y-r)),x1=Math.min(canvas.width-1,Math.ceil(p.x+r)),y1=Math.min(canvas.height-1,Math.ceil(p.y+r)),data=ctx.getImageData(x0,y0,x1-x0+1,y1-y0+1).data;let sum=0,n=0,k=0;for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++,k+=4){const dx=xx-p.x,dy=yy-p.y;if(dx*dx+dy*dy<=r*r){const g=.299*data[k]+.587*data[k+1]+.114*data[k+2];sum+=(255-g)/255;n++}}return n?sum/n:0}
 function detectOne(points,rSheet=3.5){const vals=points.map(o=>darknessAtSheet(o.x,o.y,rSheet)),order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=order[0],second=order[1]||{v:0};if(best.v<.16)return{idx:-1,state:'blank',vals};if(second.v>.16&&second.v>best.v*.76)return{idx:-2,state:'multi',vals};return{idx:best.i,state:'one',vals}}
-function readDigits(cols){let s='',bad=false;for(const c of cols){const d=detectOne(c.vals,2.8);if(d.idx>=0)s+=c.vals[d.idx].label;else{bad=true;s+='?'}}return{value:s,bad}}
+function detectOneTuned(points,rSheet=3.1,minDark=.11,multiRatio=.80){const vals=points.map(o=>darknessAtSheet(o.x,o.y,rSheet)),order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=order[0],second=order[1]||{v:0};if(best.v<minDark)return{idx:-1,state:'blank',vals,best:best.v,second:second.v};if(second.v>=minDark&&second.v>best.v*multiRatio)return{idx:-2,state:'multi',vals,best:best.v,second:second.v};return{idx:best.i,state:'one',vals,best:best.v,second:second.v}}
+function readDigits(cols,robust=false){let s='',bad=false,states=[],confidence=[];for(const c of cols){let d=detectOne(c.vals,2.8);if(robust&&d.idx<0)d=detectOneTuned(c.vals,3.35,.105,.82);if(d.idx>=0)s+=c.vals[d.idx].label;else{bad=true;s+='?'}states.push(d.state);confidence.push({best:d.best??null,second:d.second??null})}return{value:s,bad,states,confidence}}
+function examCodeCheck(t,L=null){const layout=L||buildLayout(t),r=readDigits(layout.exam,true),exists=!r.bad&&t.versions.some(v=>v.code===r.value);return{...r,exists,expected:t.versions.map(v=>v.code)}}
 function grade(){if($('#scanSource').value==='assigned'&&!$('#scanTarget').value){alert('Hãy chọn lớp hoặc phòng thi đã được phân công.');return}const t=cur($('#scanTpl').value);if(!t){alert('Chưa có mẫu');return}normalizeTemplate(t);if(!imgState){alert('Hãy chụp hoặc chọn ảnh bài làm.');return}if(markerPoints.length!==4||!H){const ok=autoDetectMarkers();if(!ok){drawOverlay();alert('Không nhận được đủ 4 marker chính. Hãy chụp lại hoặc chọn 4 marker thủ công.');return}}scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();if(!scanQuality.ok){setStatus('Ảnh chưa đạt chuẩn Auto OMR v2: '+scanQuality.message+' Hãy chụp lại.','err');alert('Ảnh chưa đạt để chấm chính xác. '+scanQuality.message+'\n\nHãy chụp lại, bảo đảm tờ giấy phẳng, đủ sáng và thấy đủ 4 góc.');return}restoreRawCanvas();
-const L=buildLayout(t),rid=readDigits(L.id),rex=readDigits(L.exam),candidateId=rid.bad?'':normalizeCandidateCode(rid.value);$('#detectedIdLabel').textContent=(targetTypeForTemplate(t)==='room'?'SBD nhận được':'Số hiệu nhận được');$('#detectedId').textContent=candidateId||'Không đọc được';$('#detectedExam').textContent=rex.value;const v=t.versions.find(x=>x.code===rex.value);if(!v){setStatus('Đã đọc mã đề '+rex.value+' nhưng mã này chưa có trong mẫu. Không thể chọn đáp án.','err');alert('Mã đề nhận được: '+rex.value+' chưa tồn tại trong mẫu này.');return}
+const L=buildLayout(t),rid=readDigits(L.id,true),rex=examCodeCheck(t,L),candidateId=rid.bad?'':normalizeCandidateCode(rid.value);$('#detectedIdLabel').textContent=(targetTypeForTemplate(t)==='room'?'SBD nhận được':'Số hiệu nhận được');$('#detectedId').textContent=candidateId||'Không đọc được';$('#detectedExam').textContent=rex.bad?'Không đọc đủ':rex.value;if(rex.bad){setStatus('Không đọc đủ Mã đề. Hãy kiểm tra khối TÔ MÃ ĐỀ: mỗi cột phải tô đúng 1 vòng tròn. App không đọc 3 ô vuông viết tay ở đầu phiếu.','err');$('#gradeSummary').innerHTML='<b>Chưa chấm:</b> chưa đọc đủ Mã đề. Hãy tô đủ các vòng tròn trong khối <b>TÔ MÃ ĐỀ</b>, giữ phiếu phẳng và thử lại.';drawOverlay(L);return}const v=t.versions.find(x=>x.code===rex.value);if(!v){setStatus(`Đọc được mã ${rex.value}, nhưng mẫu hiện tại không có mã này. Các mã hợp lệ: ${rex.expected.join(', ')}.`,'err');$('#gradeSummary').innerHTML=`<b>Chưa chấm:</b> đọc được Mã đề <b>${esc(rex.value)}</b>, nhưng mẫu hiện tại chỉ có: <b>${esc(rex.expected.join(', '))}</b>.`;drawOverlay(L);return}
 let mc=[],tf=[],sh=[],mcCorrect=0,tfRaw=0,shCorrect=0;L.mc.filter(q=>q.active!==false).forEach((q,i)=>{const d=detectOne(q.opts,3.7),ans=d.idx>=0?q.opts[d.idx].label:(d.idx===-2?'Nhiều ô':'Trống'),ok=d.idx>=0&&ans===v.mcKey[i];if(ok)mcCorrect++;mc.push({q:q.q,ans,key:v.mcKey[i],ok})});L.tf.forEach((q,i)=>{let correctItems=0,det=[];q.items.forEach((it,j)=>{const d=detectOne([it.d,it.s],3.5),a=d.idx===0?'Đ':d.idx===1?'S':d.idx===-2?'Nhiều':'Trống',ok=a===v.tfKey[i][j];if(ok)correctItems++;det.push({item:it.item,ans:a,key:v.tfKey[i][j],ok})});const raw=+(correctItems*t.tfItemScore).toFixed(2);tfRaw+=raw;tf.push({q:q.q,correctItems,raw,det})});L.short.forEach((q,i)=>{let bad=false,digitVals=[];q.digits.forEach(c=>{const d=detectOne(c.vals,2.3);if(d.idx>=0)digitVals.push(c.vals[d.idx].label);else if(d.idx===-1)digitVals.push('');else{digitVals.push('?');bad=true}});let last=-1;for(let k=digitVals.length-1;k>=0;k--)if(digitVals[k]!==''&&digitVals[k]!=='?'){last=k;break}if(last>=0){for(let k=0;k<=last;k++)if(digitVals[k]==='')bad=true}let digits=last>=0?digitVals.slice(0,last+1).join(''):'';const signDark=darknessAtSheet(q.sign.x,q.sign.y,2.3)>.16,commaDet=q.commas.length?detectOne(q.commas,2.3):{idx:-1};if(commaDet.idx===-2)bad=true;if(commaDet.idx>=0){const pos=q.commas[commaDet.idx].gap;if(pos>=digits.length)bad=true;else digits=digits.slice(0,pos)+','+digits.slice(pos)}if(signDark&&digits)digits='-'+digits;const ans=normalizeShort(digits),key=normalizeShort(v.shortKey[i]),ok=!bad&&ans!==''&&ans===key;if(ok)shCorrect++;sh.push({q:q.q,ans:ans||'Trống',key,ok})});
 const scanCtx=assignmentContexts().find(x=>x.key===$('#scanContext').value),scanTarget=$('#scanSource').value==='assigned'?$('#scanTarget').value:'',studentMatch=candidateId?rosterLookup(candidateId,t,scanTarget):null;
 let resolvedStudent='',resolvedClass='',resolvedRoom='';

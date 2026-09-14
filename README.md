@@ -129,3 +129,12 @@ Yêu cầu: website HTTPS (Vercel đáp ứng) và người dùng cho phép quy�
 - Dữ liệu vẫn lưu vào `tfKey` như trước, nên không ảnh hưởng chấm OMR, import/export đáp án hoặc Firebase.
 - Desktop: tối đa 4 câu Phần II mỗi hàng.
 - Mobile: tự xuống 2 câu/hàng hoặc 1 câu/hàng.
+
+
+## v4.4.2 — Sửa Live Camera đọc Mã đề `???`
+- Chỉ tự chấm khi Mã đề đọc đủ, hợp lệ và ổn định qua nhiều frame.
+- Thêm HUD Mã đề trên camera.
+- Kiểm tra lại mã ở frame cuối trước khi chấm.
+- Không còn alert `Mã đề nhận được: ???...`.
+- App đọc khối TÔ MÃ ĐỀ bằng vòng tròn, không đọc ba ô vuông viết tay phía trên.
+- Tăng độ nhạy dự phòng cho nét tô hơi nhạt.
