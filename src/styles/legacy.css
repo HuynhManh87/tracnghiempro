@@ -259,3 +259,22 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
   .tf-answer-grid{grid-template-columns:1fr}
   .tfToggle{width:40px!important;height:38px;line-height:36px}
 }
+
+
+/* ===== v4.6 Realtime OMR ===== */
+#liveRealtimeCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
+.liveGuideFrame{z-index:4}
+.liveCameraHud{z-index:6}
+.liveRealtimeScore{
+  display:none;position:absolute;left:10px;top:10px;z-index:7;
+  min-width:210px;max-width:min(76%,420px);padding:9px 12px;border-radius:10px;
+  background:rgba(17,24,39,.86);color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.28);
+  font-weight:800;line-height:1.35;backdrop-filter:blur(3px)
+}
+.liveRealtimeScore.show{display:block}
+.liveRtExam{font-size:17px;margin-bottom:2px}.liveRtParts{display:flex;gap:9px;flex-wrap:wrap;font-size:13px}
+.liveRtTotal{font-size:21px;margin-top:2px}.liveRtStudent{font-size:11px;opacity:.9;margin-top:3px;font-weight:600}
+.liveOmrLegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:#64748b}
+.liveOmrLegend span{display:inline-flex;align-items:center;gap:5px}.liveOmrDot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid currentColor}
+.liveOmrDot.green{color:#00d26a}.liveOmrDot.red{color:#ff3040}.liveOmrDot.yellow{color:#ffd400}
+@media(max-width:700px){.liveRealtimeScore{left:7px;top:7px;min-width:185px;padding:7px 9px}.liveRtExam{font-size:15px}.liveRtTotal{font-size:19px}}

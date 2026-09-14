@@ -143,3 +143,41 @@ Cách xử lý mới:
 - Ảnh HD được xử lý tối đa tới cạnh 4600px trước khi đọc Số hiệu/SBD, Mã đề và đáp án.
 - Camera yêu cầu độ phân giải lý tưởng 3840×2160 và autofocus liên tục nếu thiết bị hỗ trợ.
 - Không cần thay đổi hay in lại mẫu phiếu.
+
+
+## v4.5 — Grid Lock: bắt lưới OMR thật trên ảnh
+Nguyên nhân lỗi cũ:
+- engine chỉ biến đổi tọa độ cố định từ template sang ảnh;
+- không khóa lại lưới theo các vòng tròn thực tế;
+- vùng đo độ đen quá lớn, ăn cả viền vòng tròn nên ô trống cũng có thể bị xem là tối.
+
+Cơ chế mới:
+1. Nhận 4 marker chính + marker phụ như trước.
+2. Với khối Số hiệu/SBD và Mã đề, tìm độ lệch lưới trong phạm vi ±10 đơn vị sheet bằng viền tròn thật trên ảnh.
+3. Dịch lưới nhận dạng tới đúng tâm các vòng tròn trước khi đọc.
+4. Độ tô chỉ đo ở **lõi bên trong vòng tròn**, không tính viền in.
+5. Ngưỡng chọn ô là thích nghi theo nền của từng cột: so ô đậm nhất với median của 10 ô.
+6. Overlay sau khi chấm hiển thị các tâm lưới thật mà engine đang đọc.
+7. Ảnh upload giữ tới 3200px cạnh dài để không mất chi tiết.
+8. Marker chính chạm mép ảnh bị loại, tránh homography sai vì marker bị cắt.
+
+Với ảnh kiểm thử thực tế có mã 101, cơ chế Grid Lock tìm được độ lệch dọc của khối Mã đề và tách rõ các ô 1-0-1 khỏi các vòng tròn trống.
+
+
+## v4.6 — Realtime OMR
+Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào camera là thấy ngay Mã đề, điểm từng phần, tổng điểm và màu từng đáp án.
+
+### Quy ước màu
+- Xanh lá: học sinh tô đúng đáp án.
+- Đỏ: ô học sinh tô nhưng sai.
+- Vàng: đáp án đúng của câu khi học sinh tô sai hoặc bỏ trống.
+
+### Cơ chế
+- Camera xử lý liên tục khoảng 3 frame/giây.
+- Sau khi nhận 4 marker + marker phụ, engine khóa lưới bằng Grid Lock.
+- Đọc Số hiệu/SBD, Mã đề và toàn bộ bubble ngay trên frame hiện tại.
+- Điểm I/II/III và Tổng hiện ngay, không chờ ảnh HD.
+- Kết quả giống nhau 2 lần liên tiếp mới bật nút `Lưu kết quả`.
+- Lưu xong tự reset và sẵn sàng bài tiếp theo, không hiện popup chặn luồng.
+- Canvas overlay được đặt trực tiếp trên video camera để giáo viên thấy engine đang đọc ô nào.
+- Chế độ Chụp/Chọn ảnh và nút Chấm bài thủ công vẫn giữ nguyên.

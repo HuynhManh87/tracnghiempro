@@ -1,0 +1,11 @@
+OMR Mobile React v4.6 — Realtime OMR
+PASS - Có realtime evaluator
+PASS - Có overlay Xanh/Đỏ/Vàng
+PASS - Có live overlay canvas
+PASS - Có score panel realtime
+PASS - Ổn định 2 lần mới lưu
+PASS - Frame cadence 320ms
+PASS - Grid Lock vẫn còn
+PASS - Phần II fix vẫn còn
+PASS - Màu CSS legend
+PASS - Save ban đầu disabled
