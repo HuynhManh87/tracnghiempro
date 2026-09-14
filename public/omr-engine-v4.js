@@ -2125,7 +2125,7 @@ function processLiveFrame(){
     }
     const v=t.versions.find(x=>x.code===rex.value),rt=realtimeEvaluate(t,L,v,rex.value);
 
-    // v4.10: AutoScan theo thời gian hiện diện hợp lệ, KHÔNG phụ thuộc rung marker
+    // v4.11: AutoScan theo thời gian hiện diện hợp lệ, KHÔNG phụ thuộc rung marker
     // và KHÔNG phụ thuộc đáp án realtime có giống 100% giữa các frame hay không.
     // Realtime chỉ xác nhận: đúng phiếu + đủ marker + mã đề hợp lệ.
     // Khi đạt thời gian yêu cầu, ảnh HD mới là nguồn dùng để chấm chính thức.
@@ -2428,7 +2428,24 @@ function fillDarknessAtSheet(x,y,rSheet=2.8){
 function adaptiveBubbleChoice(points,rSheet=3.5,strict=false){
   const vals=points.map(o=>fillDarknessAtSheet(o.x,o.y,rSheet));
   const order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
-  const best=order[0],second=order[1]||{v:0},sorted=[...vals].sort((a,b)=>a-b);
+  const best=order[0]||{v:0,i:-1},second=order[1]||{v:0,i:-1},sorted=[...vals].sort((a,b)=>a-b);
+
+  // V4.11 FIX PHẦN II: với đúng 2 lựa chọn Đ/S, median kiểu mảng 4 lựa chọn
+  // sẽ trùng với giá trị lớn nhất => delta luôn bằng 0 => mọi ý bị đọc là Trống.
+  // Với cặp Đ/S, dùng ô còn lại làm nền so sánh trực tiếp.
+  if(vals.length===2){
+    const baseline=second.v;
+    const delta=best.v-baseline;
+    const minBest=strict?.15:.13;
+    const minDelta=strict?.055:.042;
+    // Cả hai đều đủ đậm và gần nhau: học sinh tô 2 ô / vết mực lan sang cả hai.
+    if(best.v>=minBest&&second.v>=minBest&&second.v>best.v*.84)
+      return{idx:-2,state:'multi',vals,best:best.v,second:second.v,median:baseline,delta};
+    if(best.v<minBest||delta<minDelta)
+      return{idx:-1,state:'blank',vals,best:best.v,second:second.v,median:baseline,delta};
+    return{idx:best.i,state:'one',vals,best:best.v,second:second.v,median:baseline,delta};
+  }
+
   const median=sorted[Math.floor(sorted.length/2)]||0;
   const delta=best.v-median;
   const minBest=strict?.18:.16,minDelta=strict?.075:.065;

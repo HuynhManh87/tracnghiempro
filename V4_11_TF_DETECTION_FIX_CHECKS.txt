@@ -1,0 +1,8 @@
+OMR Mobile React v4.11 — Fix nhận dạng Phần II Đúng/Sai
+
+FIX - Nhận dạng cặp Đ/S không còn dùng median của thuật toán 4 lựa chọn.
+FIX - Với 2 lựa chọn, baseline = độ tối của ô còn lại; delta = best - second.
+FIX - Ngưỡng riêng cho cặp Đ/S, chịu được ánh sáng camera và rung nhẹ hơn.
+FIX - Realtime và chấm ảnh HD dùng chung logic đã sửa.
+COMPAT - Không thay tọa độ/khung phiếu hiện tại, không bắt buộc in lại phiếu.
+NOTE - Các ô Đ/S đang đặt khá sát (12px bước dọc, bubble 12px); có thể nới ở phiên bản mẫu phiếu mới, nhưng đây không phải nguyên nhân chính khiến toàn bộ Phần II = 0.

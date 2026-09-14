@@ -216,7 +216,7 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Frame rung nhẹ chỉ làm giảm 1 nấc xác nhận thay vì reset ngay về 0.
 
 
-## v4.10 — Timed AutoScan
+## v4.11 — Timed AutoScan
 - Bỏ điều kiện 3 frame OMR phải giống hệt nhau.
 - Bỏ rung marker khỏi điều kiện kích hoạt tự chấm.
 - Chỉ cần 4 marker chính, đủ marker phụ và mã đề hợp lệ được duy trì khoảng 0,8 giây.

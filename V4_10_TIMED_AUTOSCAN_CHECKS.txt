@@ -1,4 +1,4 @@
-V4.10 Timed AutoScan
+V4.11 Timed AutoScan
 - Auto trigger does not depend on motion threshold.
 - Auto trigger does not depend on realtime answer signature stability.
 - Valid sheet + valid exam code for ~780ms triggers HD capture.
