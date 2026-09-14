@@ -214,3 +214,11 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Ngưỡng ổn định thích nghi theo cấu hình realtime.
 - Nếu toàn bộ kết quả OMR giống frame trước, cho phép rung tay nhẹ hơn để vẫn tự chấm.
 - Frame rung nhẹ chỉ làm giảm 1 nấc xác nhận thay vì reset ngay về 0.
+
+
+## v4.10 — Timed AutoScan
+- Bỏ điều kiện 3 frame OMR phải giống hệt nhau.
+- Bỏ rung marker khỏi điều kiện kích hoạt tự chấm.
+- Chỉ cần 4 marker chính, đủ marker phụ và mã đề hợp lệ được duy trì khoảng 0,8 giây.
+- Cho phép mất nhận diện ngắn tối đa ~1,25 giây mà không reset toàn bộ tiến trình.
+- Ảnh preview chỉ dùng để khóa phiếu/mã đề; ảnh HD mới dùng để chấm chính thức.
