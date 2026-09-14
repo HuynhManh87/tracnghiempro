@@ -231,3 +231,31 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
   #liveVideo{min-height:330px;max-height:72vh}
   .liveGuideFrame{left:5%;right:5%;top:4%;bottom:4%}
 }
+
+
+/* ===== v4.4.1 — Sửa nhập đáp án Phần II Đúng/Sai ===== */
+.tf-answer-grid{grid-template-columns:repeat(4,minmax(150px,1fr))}
+.tf-answer-cell{min-width:0}
+.tfKey{display:grid;grid-template-columns:repeat(4,minmax(30px,1fr));gap:6px}
+.tfChoice{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.tfChoice small{font-size:12px;line-height:1;font-weight:700}
+.tfChoice input[type="hidden"]{display:none}
+.tfToggle{
+  width:34px!important;height:34px;padding:0!important;
+  border:1.5px solid #cbd5e1;border-radius:8px;
+  font-size:14px;font-weight:900;line-height:32px;
+  cursor:pointer;user-select:none;
+  background:#fff;color:#334155;
+  touch-action:manipulation;
+}
+.tfToggle.isTrue{background:#e9f8ef;border-color:#86cfa5;color:#08733c}
+.tfToggle.isFalse{background:#fff0ef;border-color:#f0a7a2;color:#b42318}
+.tfToggle:hover{filter:brightness(.97);transform:translateY(-1px)}
+.tfToggle:focus-visible{outline:3px solid rgba(23,105,224,.22);outline-offset:2px}
+@media(max-width:850px){
+  .tf-answer-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
+}
+@media(max-width:520px){
+  .tf-answer-grid{grid-template-columns:1fr}
+  .tfToggle{width:40px!important;height:38px;line-height:36px}
+}

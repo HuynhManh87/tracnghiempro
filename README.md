@@ -118,3 +118,14 @@ Sau khi nâng lên v4.1, nên in lại phiếu để có 6 marker phụ Auto OMR
 - Giữ chỉnh sửa Mã đề đầu phiếu dịch phải 26px.
 
 Yêu cầu: website HTTPS (Vercel đáp ứng) và người dùng cho phép quyền Camera.
+
+
+## v4.4.1 — Sửa nhập đáp án Phần II
+- Bỏ dropdown Đ/S quá hẹp.
+- Mỗi ý a/b/c/d dùng một nút trạng thái rõ ràng:
+  - xanh `Đ` = Đúng
+  - đỏ `S` = Sai
+- Bấm trực tiếp để đổi `Đ ↔ S`.
+- Dữ liệu vẫn lưu vào `tfKey` như trước, nên không ảnh hưởng chấm OMR, import/export đáp án hoặc Firebase.
+- Desktop: tối đa 4 câu Phần II mỗi hàng.
+- Mobile: tự xuống 2 câu/hàng hoặc 1 câu/hàng.

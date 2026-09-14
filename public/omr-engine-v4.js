@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.4'
+    appVersion:'4.4.1'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.4',
+    appVersion:'4.4.1',
     storageFormat:'json-v1'
   };
 }
@@ -1111,8 +1111,19 @@ $('#saveAssignments').onclick=()=>{
 
 function refreshVersions(){const t=cur($('#keyTpl').value)||templates[0];if(!t)return;normalizeTemplate(t);$('#keyTpl').value=t.id;const sv=$('#keyVersion'),old=sv.value;sv.innerHTML=t.versions.map(v=>`<option value="${esc(v.code)}">Mã ${esc(v.code)}</option>`).join('');if(t.versions.some(v=>v.code===old))sv.value=old;renderKey();renderAssignmentPanel()}
 function keyVersion(t){return t.versions.find(v=>v.code===$('#keyVersion').value)||t.versions[0]}
-function renderKey(){const t=cur($('#keyTpl').value)||templates[0];if(!t)return;normalizeTemplate(t);const v=keyVersion(t);$('#maxScore').value=t.maxScore;$('#mcWeight').value=t.weights.mc;$('#tfItemScore').value=t.tfItemScore;$('#tfWeight').value=(t.tfCount*4*t.tfItemScore).toFixed(2);$('#shortWeight').value=t.weights.short;let h='';if(t.mcCount)h+=`<div class="keySection"><h3>Phần I — Mã ${esc(v.code)}</h3><div class="answer-grid">${v.mcKey.map((x,i)=>`<div class="answer-cell"><b>Câu ${i+1}</b><select class="mcAns" data-i="${i}">${['A','B','C','D'].map(a=>`<option ${a===x?'selected':''}>${a}</option>`).join('')}</select></div>`).join('')}</div></div>`;if(t.tfCount)h+=`<div class="keySection"><h3>Phần II — Mã ${esc(v.code)}</h3><div class="answer-grid">${v.tfKey.map((arr,i)=>`<div class="answer-cell"><b>Câu ${i+1}</b><div class="tfKey">${arr.map((x,j)=>`<div><small>${'abcd'[j]}</small><select class="tfAns" data-i="${i}" data-j="${j}"><option ${x==='Đ'?'selected':''}>Đ</option><option ${x==='S'?'selected':''}>S</option></select></div>`).join('')}</div></div>`).join('')}</div></div>`;if(t.shortCount)h+=`<div class="keySection"><h3>Phần III — Mã ${esc(v.code)}</h3><div class="answer-grid">${v.shortKey.map((x,i)=>`<div class="answer-cell"><b>Câu ${i+1}</b><input class="shortAns" data-i="${i}" value="${esc(x)}" maxlength="${t.shortLen+2}" placeholder="-2,5"></div>`).join('')}</div></div>`;$('#keyEditor').innerHTML=h}
-$('#keyTpl').onchange=()=>{refreshVersions();syncShareMetaFromTemplate()};$('#keyVersion').onchange=renderKey;$('#tfItemScore').oninput=()=>{const t=cur($('#keyTpl').value);if(t)$('#tfWeight').value=(t.tfCount*4*(+$('#tfItemScore').value||0)).toFixed(2)}
+function renderKey(){const t=cur($('#keyTpl').value)||templates[0];if(!t)return;normalizeTemplate(t);const v=keyVersion(t);$('#maxScore').value=t.maxScore;$('#mcWeight').value=t.weights.mc;$('#tfItemScore').value=t.tfItemScore;$('#tfWeight').value=(t.tfCount*4*t.tfItemScore).toFixed(2);$('#shortWeight').value=t.weights.short;let h='';if(t.mcCount)h+=`<div class="keySection"><h3>Phần I — Mã ${esc(v.code)}</h3><div class="answer-grid">${v.mcKey.map((x,i)=>`<div class="answer-cell"><b>Câu ${i+1}</b><select class="mcAns" data-i="${i}">${['A','B','C','D'].map(a=>`<option ${a===x?'selected':''}>${a}</option>`).join('')}</select></div>`).join('')}</div></div>`;if(t.tfCount)h+=`<div class="keySection"><h3>Phần II — Mã ${esc(v.code)}</h3><div class="answer-grid tf-answer-grid">${v.tfKey.map((arr,i)=>`<div class="answer-cell tf-answer-cell"><b>Câu ${i+1}</b><div class="tfKey">${arr.map((x,j)=>`<div class="tfChoice"><small>${'abcd'[j]}</small><input type="hidden" class="tfAns" data-i="${i}" data-j="${j}" value="${x==='S'?'S':'Đ'}"><button type="button" class="tfToggle ${x==='S'?'isFalse':'isTrue'}" data-i="${i}" data-j="${j}" aria-label="Ý ${'abcd'[j]}: ${x==='S'?'Sai':'Đúng'}" title="Bấm để đổi Đúng/Sai">${x==='S'?'S':'Đ'}</button></div>`).join('')}</div></div>`).join('')}</div></div>`;if(t.shortCount)h+=`<div class="keySection"><h3>Phần III — Mã ${esc(v.code)}</h3><div class="answer-grid">${v.shortKey.map((x,i)=>`<div class="answer-cell"><b>Câu ${i+1}</b><input class="shortAns" data-i="${i}" value="${esc(x)}" maxlength="${t.shortLen+2}" placeholder="-2,5"></div>`).join('')}</div></div>`;$('#keyEditor').innerHTML=h}
+$('#keyTpl').onchange=()=>{refreshVersions();syncShareMetaFromTemplate()};$('#keyVersion').onchange=renderKey;
+$('#keyEditor').addEventListener('click',e=>{
+  const btn=e.target.closest('.tfToggle');if(!btn)return;
+  const box=btn.closest('.tfChoice'),inp=box?.querySelector('.tfAns');if(!inp)return;
+  const next=inp.value==='Đ'?'S':'Đ';
+  inp.value=next;
+  btn.textContent=next;
+  btn.classList.toggle('isTrue',next==='Đ');
+  btn.classList.toggle('isFalse',next==='S');
+  btn.setAttribute('aria-label',`Ý ${'abcd'[+btn.dataset.j]||''}: ${next==='Đ'?'Đúng':'Sai'}`);
+});
+$('#tfItemScore').oninput=()=>{const t=cur($('#keyTpl').value);if(t)$('#tfWeight').value=(t.tfCount*4*(+$('#tfItemScore').value||0)).toFixed(2)}
 function normalizeShort(s){s=String(s??'').trim().replace(/\s+/g,'').replace('.',',');if(s.startsWith('+'))s=s.slice(1);if(/^[-+]?\d+,0+$/.test(s))s=s.replace(/,0+$/,'');if(/^(-?)0+(\d)/.test(s))s=s.replace(/^(-?)0+(\d)/,'$1$2');return s}
 function syncKeyEditorToTemplate(t,v){
   if(!t||!v)return;
@@ -1139,7 +1150,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4',
+    appVersion:'4.4.1',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1176,7 +1187,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4',
+    appVersion:'4.4.1',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),

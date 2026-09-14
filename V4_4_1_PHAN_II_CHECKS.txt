@@ -1,0 +1,10 @@
+OMR Mobile React v4.4.1 — Fix Phần II
+PASS - Không còn select tfAns
+PASS - Có nút tfToggle
+PASS - Có hidden tfAns cho save
+PASS - Có click Đ/S
+PASS - Save vẫn đọc tfAns
+PASS - CSS trạng thái Đ
+PASS - CSS trạng thái S
+PASS - Live Camera vẫn còn
+PASS - Nhận diện học sinh vẫn còn
