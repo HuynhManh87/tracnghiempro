@@ -1,3 +1,7 @@
+## v4.13 — Answer Grid Lock + OMR Diagnostics
+
+Bản này tự khóa lưới Phần I và Phần II vào tâm vòng tròn thực tế trên ảnh trước khi chấm; bảng kết quả hiển thị điểm mực A/B/C/D và Δ để chẩn đoán.
+
 # OMR Mobile React v4.4 — Live Camera OMR
 
 Bản React/Vite chuyển từ OMR Mobile v3.63.

@@ -1,0 +1,5 @@
+V4.13 Answer Grid Lock
+- Auto-calibrate each MC and True/False block against printed bubble rings.
+- Keeps ID/Exam Grid Lock.
+- Adds per-answer OMR raw scores and delta diagnostics in final result table.
+- Version/cache bust updated to 4.13.
