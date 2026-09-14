@@ -1,0 +1,8 @@
+OMR Mobile v4.17 — Part III circles match Part I
+
+PASS - Part III bubble diameter = 12 px
+PASS - Part III vertical center spacing = 14 px
+PASS - Part III sign/comma/digit coordinates updated
+PASS - Part III rendering centers use +/- 6 px
+PASS - Part III OMR sampling radius = 3.7 like Part I
+PASS - App header/cache/package version updated to v4.17

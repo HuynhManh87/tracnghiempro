@@ -1,0 +1,5 @@
+OMR Mobile v4.15 — TF Stability
+1. Part II uses detectTFPair() in realtime and final grading.
+2. TF answer-grid lock is anchored to median MC lock; residual search only ±1.25px.
+3. New printed TF bubbles use .tfBubble 10px with box-sizing:border-box; centers unchanged.
+4. Existing form coordinates remain unchanged for backward compatibility.

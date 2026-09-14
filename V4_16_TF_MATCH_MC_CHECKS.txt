@@ -1,0 +1,6 @@
+OMR Mobile v4.16 — Part II circles match Part I
+PASS - TF bubble visual size = 12px like MC
+PASS - TF vertical center spacing = 14px like MC rowH
+PASS - TF rendered top/left offsets updated from -5 to -6
+PASS - OMR layout centers updated together with printed layout
+PASS - App header/cache version updated to v4.16

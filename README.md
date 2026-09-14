@@ -226,3 +226,30 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Chỉ cần 4 marker chính, đủ marker phụ và mã đề hợp lệ được duy trì khoảng 0,8 giây.
 - Cho phép mất nhận diện ngắn tối đa ~1,25 giây mà không reset toàn bộ tiến trình.
 - Ảnh preview chỉ dùng để khóa phiếu/mã đề; ảnh HD mới dùng để chấm chính thức.
+
+
+## v4.15 – Image History Fix
+Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển thị thumbnail trực tiếp trong Lịch sử.
+
+
+## v4.15 — Ổn định Phần II Đúng/Sai
+- Phần II dùng bộ đọc cặp Đ/S riêng, ưu tiên chênh lệch giữa hai ô thay vì ngưỡng tuyệt đối.
+- Grid Lock Đ/S không còn tự nhảy ±4px theo từng câu; nó neo theo median của Phần I rồi chỉ tinh chỉnh nhỏ.
+- Phiếu in mới dùng vòng Đ/S 10px (tâm không đổi) để tránh các vòng đứng dính/chồng nhau. Phiếu cũ vẫn có thể quét.
+- Debug Phần II vẫn hiển thị hai giá trị OMR và Δ để kiểm tra.
+
+
+## v4.16 — Phần II dùng vòng tròn giống Phần I
+- Vòng Đúng/Sai đổi về 12px, cùng kích thước với vòng A/B/C/D của Phần I.
+- Khoảng cách tâm theo chiều dọc đổi từ 12px lên 14px, bằng đúng hàng Phần I.
+- Tọa độ OMR Phần II được cập nhật cùng lúc, nên mẫu in mới và engine nhận dạng luôn đồng bộ.
+- Các vòng Phần II không còn dính sát theo kiểu cũ.
+
+
+## v4.17 — Phần III dùng vòng tròn và khoảng cách giống Phần I
+
+- Vòng tròn Phần III dùng kích thước 12 px như Phần I.
+- Khoảng cách tâm theo chiều dọc của dấu âm, dấu phẩy và các hàng số dùng bước 14 px.
+- Tọa độ in và tọa độ OMR cập nhật đồng bộ.
+- Vùng đo độ đậm Phần III dùng cùng bán kính với Phần I để tăng độ ổn định.
+- Nên in lại phiếu mới từ v4.17 để Phần III khớp hoàn toàn với engine mới.

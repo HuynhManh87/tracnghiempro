@@ -1,0 +1,7 @@
+V4.14 IMAGE HISTORY FIX
+- Chỉ cho phép Lưu kết quả sau khi ảnh HD cuối đã được chấm; không lưu nhầm frame realtime preview.
+- Giữ một snapshot riêng (pendingGradeImage) của đúng bài vừa chấm.
+- Xác minh ảnh đã ghi vào IndexedDB trước khi gắn imageId vào lịch sử.
+- Nếu lỗi lưu ảnh, hiển thị lý do rõ trong trạng thái/lịch sử.
+- Lịch sử hiển thị thumbnail ảnh bài làm + Xem/Tải/Xóa.
+- Ảnh camera và ảnh upload đều dùng được.
