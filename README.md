@@ -1,4 +1,4 @@
-# OMR Mobile React v4.3.1
+# OMR Mobile React v4.4 — Live Camera OMR
 
 Bản React/Vite chuyển từ OMR Mobile v3.63.
 
@@ -103,8 +103,18 @@ Sau khi nâng lên v4.1, nên in lại phiếu để có 6 marker phụ Auto OMR
 - Khi in: A4 dọc, 100% / Actual size, không Fit/Shrink.
 
 
-## v4.3.1 — Chỉnh khoảng cách Số thứ tự / Mã đề
-- Dịch nhóm `Mã đề` + ô vuông viết tay ở đầu phiếu sang phải **26px**.
-- Áp dụng cho dòng thông tin có `Mã phách – Số thứ tự – Mã đề`.
-- Không di chuyển khối `TÔ MÃ ĐỀ` phía dưới.
-- Không thay đổi tọa độ `buildLayout()` của camera OMR.
+## v4.4 — Live Camera OMR
+- Mở camera điện thoại trực tiếp bằng `getUserMedia()`.
+- Ưu tiên camera sau.
+- Liên tục kiểm tra 4 marker góc, marker phụ, phối cảnh và độ ổn định.
+- Đạt chuẩn + giữ yên 3 nhịp → tự đóng băng 1 frame → tự chấm.
+- Sau khi chấm: kiểm tra kết quả → Lưu → Quét bài tiếp theo.
+- Có đổi camera trước/sau.
+- Có bật/tắt đèn nếu camera + trình duyệt hỗ trợ `torch`.
+- Có rung báo chấm xong nếu thiết bị hỗ trợ.
+- Vẫn giữ Chụp/Chọn ảnh làm phương án dự phòng.
+- Video chỉ xử lý trên thiết bị, không tải stream lên server.
+- Giữ nguyên Auto OMR v2, nhận diện Số hiệu/SBD, Mã đề, tra học sinh, Excel và Firebase.
+- Giữ chỉnh sửa Mã đề đầu phiếu dịch phải 26px.
+
+Yêu cầu: website HTTPS (Vercel đáp ứng) và người dùng cho phép quyền Camera.

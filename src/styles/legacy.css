@@ -198,6 +198,36 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 .idBlockV43{position:absolute;box-sizing:border-box;border:1.2px solid #333;border-radius:2px;background:#fff;overflow:hidden}.idBlockV43 .idTitleV43{position:absolute;left:5px;right:5px;top:5px;height:18px;line-height:18px;text-align:center;font-size:9.5px;font-weight:900;border-bottom:1px solid #aaa}.idBlockV43 .idGridOutline{position:absolute;left:8px;right:8px;top:56px;bottom:8px;border:1.1px solid #9aa1ad;border-radius:2px}.idBlockV43 .idWriteBoxV43{position:absolute;width:17px;height:17px;border:1.3px solid #111;background:#fff;transform:translate(-50%,-50%)}.idBlockV43 .idDigitLabelV43{position:absolute;width:10px;text-align:right;font-size:7px;line-height:8px;transform:translate(-100%,-50%)}.idBlockV43 .idBubbleV43{position:absolute;width:8px;height:8px;border:1px solid #111;border-radius:50%;transform:translate(-50%,-50%);box-sizing:border-box;background:#fff}
 @media(max-width:850px){.studentRosterActions{display:grid;grid-template-columns:1fr 1fr}.studentRosterActions .btn{width:100%}}
 
-/* v4.3.1
-   Chỉ dịch "Mã đề" + các ô vuông viết tay ở đầu phiếu sang phải 26px
-   để tách khỏi "Số thứ tự". Khối TÔ MÃ ĐỀ dùng cho camera giữ nguyên. */
+/* ===== v4.4 Live Camera OMR ===== */
+.liveCameraTools{margin-top:12px;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc}
+.liveCameraHead{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.liveCameraHead h3{margin:0;font-size:15px}
+.liveCameraActions{display:flex;gap:7px;flex-wrap:wrap}
+.liveCameraActions .btn{width:auto}
+.liveCameraStage{display:none;position:relative;margin-top:10px;border-radius:12px;overflow:hidden;background:#111;min-height:280px}
+.liveCameraStage.open{display:block}
+#liveVideo{display:block;width:100%;max-height:68vh;min-height:280px;object-fit:contain;background:#111}
+.liveGuideFrame{position:absolute;left:8%;right:8%;top:5%;bottom:5%;border:2px solid rgba(255,255,255,.9);border-radius:10px;pointer-events:none}
+.liveGuideFrame:before,.liveGuideFrame:after{content:"";position:absolute;width:36px;height:36px;border-color:#22c55e;border-style:solid}
+.liveGuideFrame:before{left:-2px;top:-2px;border-width:4px 0 0 4px}
+.liveGuideFrame:after{right:-2px;bottom:-2px;border-width:0 4px 4px 0}
+.liveCameraHud{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
+.liveHudChip{background:rgba(15,23,42,.84);color:white;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800}
+.liveHudChip.ok{background:rgba(5,120,70,.9)}
+.liveHudChip.warn{background:rgba(180,83,9,.92)}
+.liveHudChip.err{background:rgba(185,28,28,.92)}
+.liveCameraStatus{margin-top:8px;border-radius:9px;padding:8px 10px;font-size:11px;background:#eef2f7;color:#334155}
+.liveCameraStatus.ok{background:#eaf8ef;color:#08733c}
+.liveCameraStatus.warn{background:#fff7df;color:#8a5600}
+.liveCameraStatus.err{background:#fff0f0;color:#b42318}
+.liveProgress{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:7px}
+.liveProgress>span{display:block;height:100%;width:0;background:#16a34a;transition:width .18s ease}
+.liveCameraNote{font-size:10.5px;color:#64748b;margin-top:7px;line-height:1.45}
+#nextLiveSheet{display:none}
+@media(max-width:700px){
+  .liveCameraTools{padding:9px}
+  .liveCameraActions{width:100%}
+  .liveCameraActions .btn{flex:1 1 130px}
+  #liveVideo{min-height:330px;max-height:72vh}
+  .liveGuideFrame{left:5%;right:5%;top:4%;bottom:4%}
+}

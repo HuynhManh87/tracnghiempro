@@ -1,0 +1,10 @@
+OMR Mobile React v4.4 — Live Camera OMR
+PASS - getUserMedia
+PASS - video playsinline
+PASS - auto grade
+PASS - 3 stable frames
+PASS - torch
+PASS - fallback upload
+PASS - marker HUD
+PASS - v4.3.1 spacing
+PASS - node --check engine/fragments

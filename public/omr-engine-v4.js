@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null;
+let templates=[],assignments={},studentRoster=[],imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -562,6 +562,7 @@ function unlockAppAfterLogin(){
   if($('#appShell'))$('#appShell').style.display='block';
 }
 async function logoutToLogin(){
+  if(typeof stopLiveCamera==='function')stopLiveCamera(true);
   lockAppToLogin('Đã đăng xuất.');
   currentUser=null;currentIsAdmin=false;currentProfile={};
   renderAccountState();
@@ -632,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.3.1'
+    appVersion:'4.4'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -641,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.3.1',
+    appVersion:'4.4',
     storageFormat:'json-v1'
   };
 }
@@ -780,6 +781,9 @@ async function makeStoredImage(mode){
   if(mode==='none'||!imgState||!imgState.img)return null;
   if(mode==='original'&&imgState.file){
     return{blob:imgState.file,mime:imgState.file.type||'image/jpeg',originalName:imgState.file.name||'anh_bai_lam'};
+  }
+  if(mode==='original'&&imgState.liveBlob){
+    return{blob:imgState.liveBlob,mime:imgState.liveBlob.type||'image/jpeg',originalName:'camera_live.jpg'};
   }
   const img=imgState.img,maxSide=1800,sc=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
   const c=document.createElement('canvas');
@@ -1135,7 +1139,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.3.1',
+    appVersion:'4.4',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1172,7 +1176,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.3.1',
+    appVersion:'4.4',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -1913,7 +1917,144 @@ function updateScanQualityUI(){
   const q=scanQuality,cls=q.ok?(q.mode==='v2'?'ok':'warn'):'err';e.className='scanQualityBox '+cls;
   e.innerHTML=`<b>Auto OMR v2:</b> ${esc(q.message)}<div class="scanQualityMetrics"><span>4 marker chính: <b>${q.mainMarkers}/4</b></span><span>Marker phụ: <b>${q.auxCount}/6</b></span><span>Diện tích trang: <b>${Math.round(q.pageAreaRatio*100)}%</b></span><span>Hiệu chỉnh cục bộ: <b>${q.localCorrection?'Có':'Không'}</b></span></div>`;
 }
-$('#photoInput').onchange=e=>{const f=e.target.files[0];if(!f)return;clearResult();resetScanQuality();if(imgState?.url)URL.revokeObjectURL(imgState.url);const url=URL.createObjectURL(f),img=new Image();img.onload=()=>{const s=Math.min(1,1600/img.width);canvas.width=Math.round(img.width*s);canvas.height=Math.round(img.height*s);ctx.drawImage(img,0,0,canvas.width,canvas.height);imgState={img,file:f,url};manualMode=false;markerPoints=[];const ok=autoDetectMarkers();if(ok)scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();if(!ok)setStatus('Không nhận đủ 4 marker chính. Hãy chụp lại hoặc chọn thủ công.','err');else if(!scanQuality.ok)setStatus('Ảnh chưa đạt chuẩn Auto OMR v2: '+scanQuality.message+' Hãy chụp lại.','err');else if(scanQuality.mode==='v2')setStatus('Ảnh đạt chuẩn Auto OMR v2. Đã nhận marker phụ và hiệu chỉnh cục bộ.','ok');else setStatus('Phiếu kiểu cũ chỉ có 4 marker chính. Vẫn có thể chấm nhưng độ ổn định thấp hơn phiếu Auto OMR v2.','warn')};img.src=url}
+
+function setLiveStatus(msg,type=''){
+  const e=$('#liveCameraStatus');if(!e)return;
+  e.className='liveCameraStatus'+(type?' '+type:'');e.textContent=msg;
+}
+function setLiveHud(main='--',aux='--',stable=0,state=''){
+  const a=$('#liveMainMarkerHud'),b=$('#liveAuxMarkerHud'),c=$('#liveStableHud'),p=$('#liveStableProgress');
+  if(a){a.textContent=`Marker góc: ${main}/4`;a.className='liveHudChip '+(main===4?'ok':main==='--'?'':'err')}
+  if(b){b.textContent=`Marker phụ: ${aux}/6`;b.className='liveHudChip '+(Number(aux)>=4?'ok':aux==='--'?'':'warn')}
+  if(c){c.textContent=`Giữ yên: ${stable}/3`;c.className='liveHudChip '+(stable>=3?'ok':state==='bad'?'warn':'')}
+  if(p)p.style.width=Math.max(0,Math.min(100,stable/3*100))+'%';
+}
+function liveCurrentTrack(){return liveStream?.getVideoTracks?.()[0]||null}
+function updateTorchButton(){
+  const btn=$('#toggleTorch'),track=liveCurrentTrack();if(!btn)return;
+  let supported=false;try{supported=!!track?.getCapabilities?.().torch}catch{}
+  btn.disabled=!liveRunning||!supported;btn.textContent=liveTorchOn?'Tắt đèn':'Bật đèn';
+}
+function stopLiveCamera(keepMessage=false){
+  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;
+  if(liveTimer){clearInterval(liveTimer);liveTimer=null}
+  if(liveStream){liveStream.getTracks().forEach(t=>{try{t.stop()}catch{}});liveStream=null}
+  const video=$('#liveVideo');if(video){try{video.pause()}catch{};video.srcObject=null}
+  $('#liveCameraStage')?.classList.remove('open');
+  if($('#startLiveCamera'))$('#startLiveCamera').disabled=false;
+  if($('#stopLiveCamera'))$('#stopLiveCamera').disabled=true;
+  if($('#switchLiveCamera'))$('#switchLiveCamera').disabled=true;
+  if($('#toggleTorch')){$('#toggleTorch').disabled=true;$('#toggleTorch').textContent='Bật đèn'}
+  if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='none';
+  setLiveHud('--','--',0);
+  if(!keepMessage)setLiveStatus('Camera đã dừng.');
+}
+function liveMarkerMotion(prev,curr){
+  if(!prev||!curr||prev.length!==4||curr.length!==4)return 1;
+  const diag=Math.max(1,Math.hypot(canvas.width,canvas.height));let m=0;
+  for(let i=0;i<4;i++)m=Math.max(m,Math.hypot(prev[i].x-curr[i].x,prev[i].y-curr[i].y)/diag);
+  return m;
+}
+function drawVideoFrameToScanCanvas(video,maxSide=1600){
+  const vw=video.videoWidth||1280,vh=video.videoHeight||720,sc=Math.min(1,maxSide/Math.max(vw,vh));
+  canvas.width=Math.max(1,Math.round(vw*sc));canvas.height=Math.max(1,Math.round(vh*sc));
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(video,0,0,canvas.width,canvas.height);
+}
+async function freezeLiveFrame(){
+  const video=$('#liveVideo');if(!video||video.readyState<2)throw new Error('Camera chưa sẵn sàng.');
+  const maxSide=2400,vw=video.videoWidth||1280,vh=video.videoHeight||720,sc=Math.min(1,maxSide/Math.max(vw,vh));
+  const snap=document.createElement('canvas');snap.width=Math.max(1,Math.round(vw*sc));snap.height=Math.max(1,Math.round(vh*sc));
+  const sx=snap.getContext('2d',{willReadFrequently:true});sx.drawImage(video,0,0,snap.width,snap.height);
+  const blob=await blobFromCanvas(snap,'image/jpeg',.94);
+  canvas.width=snap.width;canvas.height=snap.height;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(snap,0,0);
+  imgState={img:snap,file:null,url:null,live:true,liveBlob:blob||null};manualMode=false;markerPoints=[];resetScanQuality();
+  const ok=autoDetectMarkers();if(ok)scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();
+  return ok&&scanQuality?.ok;
+}
+async function captureLiveAndGrade(){
+  if(liveBusy||livePaused)return;
+  liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang lấy khung hình và chấm…','ok');
+  try{
+    const good=await freezeLiveFrame();
+    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
+    grade();
+    if(lastGrade){
+      lastGrade.liveCamera=true;
+      if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='inline-block';
+      setLiveStatus(`Đã chấm trực tiếp: ${lastGrade.score}/${lastGrade.max}. Kiểm tra → Lưu kết quả → Quét bài tiếp theo.`,'ok');
+      if(navigator.vibrate)try{navigator.vibrate([80,40,80])}catch{}
+    }else{
+      livePaused=false;liveStableFrames=0;livePrevMarkers=null;setLiveStatus('Chưa tạo được kết quả. Điều chỉnh phiếu và thử lại.','warn');
+    }
+  }catch(e){
+    console.error(e);livePaused=false;liveStableFrames=0;livePrevMarkers=null;setLiveStatus('Lỗi lấy khung hình: '+(e?.message||e),'err');
+  }finally{liveBusy=false}
+}
+function processLiveFrame(){
+  if(!liveRunning||liveBusy||livePaused)return;
+  const video=$('#liveVideo');if(!video||video.readyState<2)return;
+  try{
+    drawVideoFrameToScanCanvas(video,1400);
+    imgState={img:video,file:null,url:null,livePreview:true};manualMode=false;markerPoints=[];resetScanQuality();
+    const ok=autoDetectMarkers();
+    if(!ok){
+      liveStableFrames=0;livePrevMarkers=null;drawOverlay();setLiveHud(0,0,0,'bad');
+      setLiveStatus('Chưa thấy đủ 4 marker góc. Đưa trọn tờ giấy vào khung.','warn');return;
+    }
+    scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();
+    const current=markerPoints.map(p=>({x:p.x,y:p.y})),motion=liveMarkerMotion(livePrevMarkers,current),q=scanQuality;
+    const qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4,still=motion<0.012;
+    if(qualityGood&&still)liveStableFrames=Math.min(3,liveStableFrames+1);else liveStableFrames=0;
+    livePrevMarkers=current;setLiveHud(4,q?.auxCount??0,liveStableFrames,qualityGood?'good':'bad');
+    if(!q?.ok)setLiveStatus(q?.message||'Ảnh chưa đạt chuẩn.','warn');
+    else if(q.mode!=='v2')setLiveStatus('Đã thấy 4 marker góc nhưng thiếu marker phụ. Đưa camera gần hơn hoặc dùng phiếu Auto OMR v2.','warn');
+    else if(!still)setLiveStatus(`Đã nhận ${q.auxCount}/6 marker phụ. Giữ điện thoại và phiếu yên…`,'warn');
+    else if(liveStableFrames<3)setLiveStatus(`Ảnh đạt chuẩn. Giữ yên thêm ${3-liveStableFrames} nhịp…`,'ok');
+    if(liveStableFrames>=3)captureLiveAndGrade();
+  }catch(e){console.warn('Live OMR frame error',e);liveStableFrames=0;setLiveStatus('Không xử lý được khung hình camera.','err')}
+}
+async function startLiveCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    alert('Trình duyệt này không hỗ trợ camera trực tiếp. Hãy dùng Chrome/Safari mới trên HTTPS hoặc dùng Chụp/Chọn ảnh dự phòng.');return;
+  }
+  if($('#scanSource').value==='assigned'&&!$('#scanTarget').value){alert('Hãy chọn lớp hoặc phòng thi trước khi mở camera.');return}
+  const t=cur($('#scanTpl').value);if(!t){alert('Chưa chọn mẫu & đáp án để chấm.');return}
+  stopLiveCamera(true);clearResult();resetScanQuality();setLiveStatus('Đang xin quyền mở camera…');
+  try{
+    liveStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:1920},height:{ideal:1080}}});
+    const video=$('#liveVideo');video.srcObject=liveStream;await video.play();
+    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;
+    $('#liveCameraStage')?.classList.add('open');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
+    updateTorchButton();setLiveHud('--','--',0);setLiveStatus('Camera đã mở. Đưa trọn phiếu A4 vào khung.');
+    liveTimer=setInterval(processLiveFrame,480);setTimeout(processLiveFrame,250);
+  }catch(e){
+    stopLiveCamera(true);
+    const name=e?.name||'',msg=name==='NotAllowedError'?'Bạn chưa cho phép truy cập camera. Hãy cấp quyền Camera cho trang web rồi thử lại.':name==='NotFoundError'?'Không tìm thấy camera trên thiết bị.':'Không mở được camera: '+(e?.message||e);
+    setLiveStatus(msg,'err');alert(msg);
+  }
+}
+async function switchLiveCamera(){liveFacingMode=liveFacingMode==='environment'?'user':'environment';if(liveRunning)await startLiveCamera()}
+async function toggleLiveTorch(){
+  const track=liveCurrentTrack();if(!track)return;
+  try{
+    const cap=track.getCapabilities?.();if(!cap?.torch){alert('Thiết bị/camera này không hỗ trợ bật đèn từ trình duyệt.');return}
+    liveTorchOn=!liveTorchOn;await track.applyConstraints({advanced:[{torch:liveTorchOn}]});updateTorchButton();
+  }catch(e){liveTorchOn=false;updateTorchButton();alert('Không điều khiển được đèn camera trên thiết bị này.')}
+}
+function resumeLiveForNextSheet(){
+  if(!liveRunning){startLiveCamera();return}
+  clearResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;
+  $('#nextLiveSheet').style.display='none';setLiveHud('--','--',0);setLiveStatus('Sẵn sàng. Đưa bài tiếp theo vào khung.');
+}
+$('#startLiveCamera').onclick=startLiveCamera;
+$('#stopLiveCamera').onclick=()=>stopLiveCamera();
+$('#switchLiveCamera').onclick=switchLiveCamera;
+$('#toggleTorch').onclick=toggleLiveTorch;
+$('#nextLiveSheet').onclick=resumeLiveForNextSheet;
+window.addEventListener('beforeunload',()=>stopLiveCamera(true));
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&liveRunning)stopLiveCamera(true)});
+
+$('#photoInput').onchange=e=>{const f=e.target.files[0];if(!f)return;stopLiveCamera();clearResult();resetScanQuality();if(imgState?.url)URL.revokeObjectURL(imgState.url);const url=URL.createObjectURL(f),img=new Image();img.onload=()=>{const s=Math.min(1,1600/img.width);canvas.width=Math.round(img.width*s);canvas.height=Math.round(img.height*s);ctx.drawImage(img,0,0,canvas.width,canvas.height);imgState={img,file:f,url};manualMode=false;markerPoints=[];const ok=autoDetectMarkers();if(ok)scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();if(!ok)setStatus('Không nhận đủ 4 marker chính. Hãy chụp lại hoặc chọn thủ công.','err');else if(!scanQuality.ok)setStatus('Ảnh chưa đạt chuẩn Auto OMR v2: '+scanQuality.message+' Hãy chụp lại.','err');else if(scanQuality.mode==='v2')setStatus('Ảnh đạt chuẩn Auto OMR v2. Đã nhận marker phụ và hiệu chỉnh cục bộ.','ok');else setStatus('Phiếu kiểu cũ chỉ có 4 marker chính. Vẫn có thể chấm nhưng độ ổn định thấp hơn phiếu Auto OMR v2.','warn')};img.src=url}
 function downsample(){const max=520,sc=Math.min(1,max/Math.max(canvas.width,canvas.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(canvas.width*sc));c.height=Math.max(1,Math.round(canvas.height*sc));const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(canvas,0,0,c.width,c.height);return{c,x,sc}}
 function findMarkerInRoi(data,w,h,roi,corner){
   const [x0,y0,x1,y1]=roi.map(Math.round),vis=new Uint8Array(w*h);let best=null;
@@ -2031,7 +2172,7 @@ $('#saveResult').onclick=async()=>{
   if(row.candidateId){const dup=his.find(h=>h.candidateId===row.candidateId&&h.targetType===row.targetType&&h.target===row.target&&h.testName===row.testName&&h.subject===row.subject);if(dup&&!confirm(`Đã có kết quả của ${row.student||row.candidateId} trong cùng lớp/phòng và đợt kiểm tra. Vẫn lưu thêm kết quả này?`)){btn.disabled=false;return}}
   his.unshift(row);saveHistory(his);
   await applyImageRetention();renderHistory();btn.disabled=false;
-  alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}`);
+  alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}${row.liveCamera?'\nBấm Quét bài tiếp theo để tiếp tục.':''}`);
 }
 function historyClassValue(h){return String(h?.studentClass||(h?.targetType==='class'?h.target:'')||'').trim()}
 function historyRoomValue(h){return normalizeRosterRoom(h?.studentRoom||(h?.targetType==='room'?h.target:'')||'')}
