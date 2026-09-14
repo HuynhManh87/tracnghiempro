@@ -1,0 +1,7 @@
+v4.9 Smart AutoScan checks
+
+1. Marker góc 4/4 + marker phụ >=4 + mã đề hợp lệ.
+2. Khi cầm điện thoại hơi rung, Giữ yên phải tăng 1/3 -> 2/3 -> 3/3 nếu signature OMR không đổi.
+3. Chuyển động mạnh vẫn không được tự chấm.
+4. Khi đạt 3/3 và bật Tự chấm, phải gọi captureLiveAndGrade().
+5. Camera preview giữ cơ chế Smooth Camera của v4.8.

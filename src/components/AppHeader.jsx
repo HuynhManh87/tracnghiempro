@@ -2,7 +2,7 @@ export default function AppHeader() {
   return (
     <header>
       <div>
-        <h1>OMR Mobile v4.8</h1>
+        <h1>OMR Mobile v4.9</h1>
         <small>Auto OMR v2 • Tự đọc Số hiệu/SBD + Mã đề • 4 marker chính + 6 marker phụ</small>
       </div>
       <div className="accountHeader">

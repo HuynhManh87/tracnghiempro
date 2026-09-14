@@ -206,3 +206,11 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Preview ưu tiên 720p/30fps; ảnh chấm cuối vẫn cố lấy HD bằng ImageCapture.
 - Phân tích OMR được giảm kích thước và điều chỉnh nhịp theo cấu hình thiết bị.
 - Mục tiêu: giảm giật/lag rõ rệt khi đưa phiếu vào camera.
+
+
+## v4.9 — Smart AutoScan / chống kẹt Giữ yên 0/3
+- Sửa lỗi camera đã nhận đủ 4/4 marker, 6/6 marker phụ và đúng Mã đề nhưng bộ đếm Giữ yên vẫn 0/3.
+- Tính chuyển động theo trung vị 4 marker + tâm trang, tránh một marker dao động làm reset toàn bộ.
+- Ngưỡng ổn định thích nghi theo cấu hình realtime.
+- Nếu toàn bộ kết quả OMR giống frame trước, cho phép rung tay nhẹ hơn để vẫn tự chấm.
+- Frame rung nhẹ chỉ làm giảm 1 nấc xác nhận thay vì reset ngay về 0.

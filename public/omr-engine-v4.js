@@ -1,4 +1,4 @@
-window.OMR_REACT_VERSION='4.8.0';
+window.OMR_REACT_VERSION='4.9.0';
 
 const $=s=>document.querySelector(s), SHORT_SYMS=['-','0','1','2','3','4','5','6','7','8','9',','];
 const DEFAULT_FIREBASE_CONFIG={
@@ -1964,9 +1964,18 @@ function stopLiveCamera(keepMessage=false){
 }
 function liveMarkerMotion(prev,curr){
   if(!prev||!curr||prev.length!==4||curr.length!==4)return 1;
-  const diag=Math.max(1,Math.hypot(canvas.width,canvas.height));let m=0;
-  for(let i=0;i<4;i++)m=Math.max(m,Math.hypot(prev[i].x-curr[i].x,prev[i].y-curr[i].y)/diag);
-  return m;
+  const diag=Math.max(1,Math.hypot(canvas.width,canvas.height));
+  // Dùng độ dịch chuyển trung vị của 4 marker thay vì marker lệch nhiều nhất.
+  // Camera cầm tay và phép tìm tâm marker thường làm 1 góc dao động vài pixel,
+  // nếu dùng max thì bộ đếm Giữ yên sẽ bị reset về 0 liên tục dù phiếu đã đọc rất rõ.
+  const ds=[];
+  for(let i=0;i<4;i++)ds.push(Math.hypot(prev[i].x-curr[i].x,prev[i].y-curr[i].y)/diag);
+  ds.sort((a,b)=>a-b);
+  const median=(ds[1]+ds[2])/2;
+  const pc=prev.reduce((a,p)=>({x:a.x+p.x/4,y:a.y+p.y/4}),{x:0,y:0});
+  const cc=curr.reduce((a,p)=>({x:a.x+p.x/4,y:a.y+p.y/4}),{x:0,y:0});
+  const center=Math.hypot(pc.x-cc.x,pc.y-cc.y)/diag;
+  return Math.max(center,median);
 }
 function livePerformanceProfile(){
   const mem=Number(navigator.deviceMemory||0),cores=Number(navigator.hardwareConcurrency||0);
@@ -2079,8 +2088,14 @@ function processLiveFrame(){
     const L=buildLayout(t),gridLock=lockRecognitionGrids(L),rex=examCodeCheck(t,L);
     if(rex.bad||!rex.exists){resetRealtimeResult();presentLiveProcessedFrame();setLiveHud(4,q?.auxCount??0,0,'bad',rex.bad?'???':rex.value,false);setLiveStatus(rex.bad?'Đã khóa phiếu nhưng chưa đọc đủ Mã đề. Giữ phiếu rõ và phẳng.':`Đọc mã ${rex.value}, chưa có trong mẫu hiện tại.`,'warn');return}
     const v=t.versions.find(x=>x.code===rex.value),rt=realtimeEvaluate(t,L,v,rex.value);
-    presentLiveProcessedFrame(rt);renderRealtimeResult(rt,rex.value,still);
-    if(!still)setLiveStatus(`Đang đọc realtime • Mã ${rex.value} • Tổng ${rt.total}. Giữ yên phiếu để tự chấm.`,'warn');
+    // v4.9: không bắt điện thoại phải đứng yên tuyệt đối. Nếu toàn bộ đáp án đọc ra
+    // giống khung trước, cho phép một mức rung tay lớn hơn nhưng vẫn chặn chuyển động mạnh.
+    const sigSame=!!realtimeSignature&&realtimeSignature===rt.signature;
+    const softMotionLimit=perf.maxSide<=900?.024:perf.maxSide<=1050?.020:.017;
+    const hardMotionLimit=softMotionLimit*2.15;
+    const stableEligible=motion<softMotionLimit||(sigSame&&motion<hardMotionLimit);
+    presentLiveProcessedFrame(rt);renderRealtimeResult(rt,rex.value,stableEligible);
+    if(!stableEligible)setLiveStatus(`Đang đọc realtime • Mã ${rex.value} • Tổng ${rt.total}. Giảm rung tay một chút để tự chấm.`,'warn');
     else if(realtimeStableCount<3)setLiveStatus(`Đã đọc Mã ${rex.value} • Tổng ${rt.total}. Đang xác nhận ${realtimeStableCount}/3…`,'ok');
     else if(liveAutoScan&&Date.now()>=liveAutoCooldownUntil){
       liveAutoCooldownUntil=Date.now()+1800;
@@ -2486,7 +2501,12 @@ function resetRealtimeResult(){
 }
 function renderRealtimeResult(rt,examCode,stableEligible=true){
   if(!rt)return;
-  if(!stableEligible){realtimeSignature=rt.signature;realtimeStableCount=0}
+  if(!stableEligible){
+    // Không xóa sạch tiến trình chỉ vì một frame rung nhẹ. Nếu kết quả OMR vẫn giống nhau,
+    // giảm 1 nấc; chỉ reset hoàn toàn khi chính kết quả nhận dạng thay đổi.
+    if(realtimeSignature===rt.signature)realtimeStableCount=Math.max(0,realtimeStableCount-1);
+    else{realtimeSignature=rt.signature;realtimeStableCount=0}
+  }
   else if(realtimeSignature===rt.signature)realtimeStableCount=Math.min(3,realtimeStableCount+1);else{realtimeSignature=rt.signature;realtimeStableCount=1}
   realtimeLast=rt;
   const t=cur($('#scanTpl').value);
