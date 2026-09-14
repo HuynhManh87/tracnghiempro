@@ -131,10 +131,15 @@ Yêu cầu: website HTTPS (Vercel đáp ứng) và người dùng cho phép quy�
 - Mobile: tự xuống 2 câu/hàng hoặc 1 câu/hàng.
 
 
-## v4.4.2 — Sửa Live Camera đọc Mã đề `???`
-- Chỉ tự chấm khi Mã đề đọc đủ, hợp lệ và ổn định qua nhiều frame.
-- Thêm HUD Mã đề trên camera.
-- Kiểm tra lại mã ở frame cuối trước khi chấm.
-- Không còn alert `Mã đề nhận được: ???...`.
-- App đọc khối TÔ MÃ ĐỀ bằng vòng tròn, không đọc ba ô vuông viết tay phía trên.
-- Tăng độ nhạy dự phòng cho nét tô hơi nhạt.
+## v4.4.3 — Quét xa nhưng đọc Mã đề bằng ảnh HD
+Vấn đề thực tế: để thấy đủ 4 marker góc của A4, camera phải lùi xa; vùng TÔ MÃ ĐỀ trên preview 1080p có thể quá ít pixel.
+
+Cách xử lý mới:
+- Preview chỉ dùng để nhận 4 marker góc, marker phụ và kiểm tra độ ổn định.
+- Preview KHÔNG còn bắt buộc phải đọc được Mã đề.
+- Sau 3 nhịp ổn định, app tự chụp một ảnh HD:
+  - ưu tiên `ImageCapture.takePhoto()` để lấy ảnh tĩnh độ phân giải cảm biến trên trình duyệt hỗ trợ;
+  - fallback về frame video native nếu không hỗ trợ.
+- Ảnh HD được xử lý tối đa tới cạnh 4600px trước khi đọc Số hiệu/SBD, Mã đề và đáp án.
+- Camera yêu cầu độ phân giải lý tưởng 3840×2160 và autofocus liên tục nếu thiết bị hỗ trợ.
+- Không cần thay đổi hay in lại mẫu phiếu.

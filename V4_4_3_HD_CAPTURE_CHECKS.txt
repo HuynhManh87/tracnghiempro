@@ -1,0 +1,10 @@
+OMR Mobile React v4.4.3 — HD capture
+PASS - Có ImageCapture.takePhoto
+PASS - Có fallback video native
+PASS - Preview không gate Mã đề
+PASS - Ảnh HD max 4600px
+PASS - Yêu cầu 4K ideal
+PASS - Autofocus continuous
+PASS - Final exam check vẫn còn
+PASS - Live Camera còn
+PASS - Fix Phần II còn

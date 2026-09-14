@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.4.2'
+    appVersion:'4.4.3'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.4.2',
+    appVersion:'4.4.3',
     storageFormat:'json-v1'
   };
 }
@@ -1150,7 +1150,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4.2',
+    appVersion:'4.4.3',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1187,7 +1187,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.4.2',
+    appVersion:'4.4.3',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -1972,28 +1972,58 @@ function drawVideoFrameToScanCanvas(video,maxSide=1600){
   canvas.width=Math.max(1,Math.round(vw*sc));canvas.height=Math.max(1,Math.round(vh*sc));
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(video,0,0,canvas.width,canvas.height);
 }
+async function captureLiveHighResSource(){
+  const video=$('#liveVideo'),track=liveCurrentTrack();
+  if(!video||video.readyState<2)throw new Error('Camera chưa sẵn sàng.');
+
+  // Android Chrome và một số trình duyệt có thể lấy ảnh tĩnh ở độ phân giải cảm biến,
+  // cao hơn đáng kể so với luồng preview.
+  if(track&&typeof ImageCapture!=='undefined'){
+    try{
+      const ic=new ImageCapture(track),blob=await ic.takePhoto();
+      if(blob&&blob.size>0){
+        const bmp=await createImageBitmap(blob);
+        return{source:bmp,blob,width:bmp.width,height:bmp.height,mode:'photo'};
+      }
+    }catch(e){console.warn('ImageCapture.takePhoto không dùng được, chuyển sang frame video.',e)}
+  }
+
+  // Fallback: dùng frame video ở kích thước native, không thu nhỏ trước khi đọc OMR.
+  return{source:video,blob:null,width:video.videoWidth||1280,height:video.videoHeight||720,mode:'video'};
+}
 async function freezeLiveFrame(){
-  const video=$('#liveVideo');if(!video||video.readyState<2)throw new Error('Camera chưa sẵn sàng.');
-  const maxSide=2400,vw=video.videoWidth||1280,vh=video.videoHeight||720,sc=Math.min(1,maxSide/Math.max(vw,vh));
-  const snap=document.createElement('canvas');snap.width=Math.max(1,Math.round(vw*sc));snap.height=Math.max(1,Math.round(vh*sc));
-  const sx=snap.getContext('2d',{willReadFrequently:true});sx.drawImage(video,0,0,snap.width,snap.height);
-  const blob=await blobFromCanvas(snap,'image/jpeg',.94);
-  canvas.width=snap.width;canvas.height=snap.height;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(snap,0,0);
-  imgState={img:snap,file:null,url:null,live:true,liveBlob:blob||null};manualMode=false;markerPoints=[];resetScanQuality();
-  const ok=autoDetectMarkers();if(ok)scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();
+  const cap=await captureLiveHighResSource(),maxSide=4600,sc=Math.min(1,maxSide/Math.max(cap.width,cap.height));
+  const snap=document.createElement('canvas');
+  snap.width=Math.max(1,Math.round(cap.width*sc));snap.height=Math.max(1,Math.round(cap.height*sc));
+  const sx=snap.getContext('2d',{willReadFrequently:true});
+  sx.fillStyle='#fff';sx.fillRect(0,0,snap.width,snap.height);
+  sx.drawImage(cap.source,0,0,snap.width,snap.height);
+
+  let blob=cap.blob;
+  if(!blob)blob=await blobFromCanvas(snap,'image/jpeg',.96);
+
+  canvas.width=snap.width;canvas.height=snap.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(snap,0,0);
+  imgState={img:snap,file:null,url:null,live:true,liveBlob:blob||null,liveCaptureMode:cap.mode};
+  manualMode=false;markerPoints=[];resetScanQuality();
+
+  const ok=autoDetectMarkers();
+  if(ok)scanQuality=analyzeScanQuality();
+  drawOverlay();updateScanQualityUI();
+  try{if(cap.mode==='photo'&&cap.source?.close)cap.source.close()}catch{}
   return ok&&scanQuality?.ok;
 }
 async function captureLiveAndGrade(){
   if(liveBusy||livePaused)return;
-  liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang lấy khung hình và chấm…','ok');
+  liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang chụp khung hình HD để đọc Số hiệu/SBD, Mã đề và chấm…','ok');
   try{
     const good=await freezeLiveFrame();
     if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
     const t=cur($('#scanTpl').value),finalExam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
-    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Khung hình rõ nhưng chưa đọc đủ Mã đề. Hãy kiểm tra khối TÔ MÃ ĐỀ và tiếp tục quét.':`Đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
+    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Ảnh HD vẫn chưa đọc đủ Mã đề. Hãy kiểm tra mỗi cột TÔ MÃ ĐỀ chỉ tô 1 vòng tròn, tô đậm hơn và giữ giấy phẳng.':`Ảnh HD đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
     grade();
     if(lastGrade){
-      lastGrade.liveCamera=true;
+      lastGrade.liveCamera=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
       if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='inline-block';
       setLiveStatus(`Đã chấm trực tiếp: ${lastGrade.score}/${lastGrade.max}. Kiểm tra → Lưu kết quả → Quét bài tiếp theo.`,'ok');
       if(navigator.vibrate)try{navigator.vibrate([80,40,80])}catch{}
@@ -2016,18 +2046,23 @@ function processLiveFrame(){
       setLiveStatus('Chưa thấy đủ 4 marker góc. Đưa trọn tờ giấy vào khung.','warn');return;
     }
     scanQuality=analyzeScanQuality();updateScanQualityUI();
-    const current=markerPoints.map(p=>({x:p.x,y:p.y})),motion=liveMarkerMotion(livePrevMarkers,current),q=scanQuality,t=cur($('#scanTpl').value),exam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
-    const qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4,still=motion<0.012,examGood=!exam.bad&&exam.exists;
-    if(examGood){if(liveExamCode===exam.value)liveExamStable=Math.min(3,liveExamStable+1);else{liveExamCode=exam.value;liveExamStable=1}}else{liveExamCode='';liveExamStable=0}
-    if(qualityGood&&still&&examGood&&liveExamStable>=2)liveStableFrames=Math.min(3,liveStableFrames+1);else liveStableFrames=0;
-    livePrevMarkers=current;drawOverlay();setLiveHud(4,q?.auxCount??0,liveStableFrames,(qualityGood&&examGood)?'good':'bad',exam.bad?'???':exam.value,examGood);
+    const current=markerPoints.map(p=>({x:p.x,y:p.y})),motion=liveMarkerMotion(livePrevMarkers,current),q=scanQuality,t=cur($('#scanTpl').value);
+    const qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4,still=motion<0.012;
+
+    // Preview có thể quá nhỏ để đọc Mã đề. Chỉ hiển thị thử, KHÔNG dùng nó làm điều kiện chấm.
+    let examPreview={value:'---',bad:true,exists:false};
+    try{if(t)examPreview=examCodeCheck(t)}catch{}
+    const previewExamOk=!examPreview.bad&&examPreview.exists;
+
+    if(qualityGood&&still)liveStableFrames=Math.min(3,liveStableFrames+1);else liveStableFrames=0;
+    livePrevMarkers=current;drawOverlay();
+    setLiveHud(4,q?.auxCount??0,liveStableFrames,qualityGood?'good':'bad',
+      previewExamOk?examPreview.value:'HD',previewExamOk);
+
     if(!q?.ok)setLiveStatus(q?.message||'Ảnh chưa đạt chuẩn.','warn');
-    else if(q.mode!=='v2')setLiveStatus('Đã thấy 4 marker góc nhưng thiếu marker phụ. Đưa camera gần hơn hoặc dùng phiếu Auto OMR v2.','warn');
-    else if(exam.bad)setLiveStatus('Chưa đọc đủ Mã đề. App đọc ở khối TÔ MÃ ĐỀ (các vòng tròn), không đọc 3 ô vuông viết tay phía trên. Hãy tô đủ mã đề và đưa camera gần hơn.','warn');
-    else if(!exam.exists)setLiveStatus(`Đang đọc mã ${exam.value}, nhưng mẫu hiện tại chỉ có: ${exam.expected.join(', ')}. Kiểm tra lại mẫu hoặc phần tô Mã đề.`,'warn');
-    else if(!still)setLiveStatus(`Đã nhận Mã đề ${exam.value} và ${q.auxCount}/6 marker phụ. Giữ điện thoại và phiếu yên…`,'warn');
-    else if(liveExamStable<2)setLiveStatus(`Đã đọc Mã đề ${exam.value}. Giữ yên để xác nhận lại mã đề…`,'ok');
-    else if(liveStableFrames<3)setLiveStatus(`Mã đề ${exam.value} đã ổn định. Giữ yên thêm ${3-liveStableFrames} nhịp…`,'ok');
+    else if(q.mode!=='v2')setLiveStatus('Đã thấy 4 marker góc nhưng thiếu marker phụ. Điều chỉnh để thấy đủ các marker nhỏ hai bên.','warn');
+    else if(!still)setLiveStatus(`Đã nhận ${q.auxCount}/6 marker phụ. Giữ điện thoại và phiếu yên…`,'warn');
+    else if(liveStableFrames<3)setLiveStatus(`Hình học đạt chuẩn. Giữ yên thêm ${3-liveStableFrames} nhịp; app sẽ chụp ảnh HD để đọc Mã đề.`,'ok');
     if(liveStableFrames>=3)captureLiveAndGrade();
   }catch(e){console.warn('Live OMR frame error',e);liveStableFrames=0;setLiveStatus('Không xử lý được khung hình camera.','err')}
 }
@@ -2039,7 +2074,17 @@ async function startLiveCamera(){
   const t=cur($('#scanTpl').value);if(!t){alert('Chưa chọn mẫu & đáp án để chấm.');return}
   stopLiveCamera(true);clearResult();resetScanQuality();setLiveStatus('Đang xin quyền mở camera…');
   try{
-    liveStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:1920},height:{ideal:1080}}});
+    liveStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+      facingMode:{ideal:liveFacingMode},
+      width:{ideal:3840,min:1280},
+      height:{ideal:2160,min:720}
+    }});
+    const track=liveCurrentTrack();
+    try{
+      const cap=track?.getCapabilities?.()||{},adv=[];
+      if(Array.isArray(cap.focusMode)&&cap.focusMode.includes('continuous'))adv.push({focusMode:'continuous'});
+      if(adv.length)await track.applyConstraints({advanced:adv});
+    }catch(e){console.warn('Không áp dụng được autofocus liên tục.',e)}
     const video=$('#liveVideo');video.srcObject=liveStream;await video.play();
     liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;
     $('#liveCameraStage')?.classList.add('open');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
