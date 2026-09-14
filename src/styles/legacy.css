@@ -220,6 +220,7 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 .liveCameraStatus.ok{background:#eaf8ef;color:#08733c}
 .liveCameraStatus.warn{background:#fff7df;color:#8a5600}
 .liveCameraStatus.err{background:#fff0f0;color:#b42318}
+.liveCameraDiag{margin-top:5px;font-size:10.5px;color:#64748b;line-height:1.4}
 .liveProgress{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:7px}
 .liveProgress>span{display:block;height:100%;width:0;background:#16a34a;transition:width .18s ease}
 .liveCameraNote{font-size:10.5px;color:#64748b;margin-top:7px;line-height:1.45}
@@ -278,3 +279,5 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 .liveOmrLegend span{display:inline-flex;align-items:center;gap:5px}.liveOmrDot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid currentColor}
 .liveOmrDot.green{color:#00d26a}.liveOmrDot.red{color:#ff3040}.liveOmrDot.yellow{color:#ffd400}
 @media(max-width:700px){.liveRealtimeScore{left:7px;top:7px;min-width:185px;padding:7px 9px}.liveRtExam{font-size:15px}.liveRtTotal{font-size:19px}}
+
+.liveAutoToggle{display:inline-flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-weight:700;font-size:14px;cursor:pointer}.liveAutoToggle input{width:18px;height:18px;margin:0}

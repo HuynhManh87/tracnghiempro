@@ -181,3 +181,20 @@ Mục tiêu: trải nghiệm giống máy chấm realtime — đưa phiếu vào
 - Lưu xong tự reset và sẵn sàng bài tiếp theo, không hiện popup chặn luồng.
 - Canvas overlay được đặt trực tiếp trên video camera để giáo viên thấy engine đang đọc ô nào.
 - Chế độ Chụp/Chọn ảnh và nút Chấm bài thủ công vẫn giữ nguyên.
+
+
+## v4.6.1 — Sửa camera điện thoại
+- Bỏ ràng buộc độ phân giải tối thiểu 1280×720 có thể làm một số điện thoại từ chối mở camera.
+- Tự thử nhiều cấu hình camera từ độ phân giải cao xuống chế độ tương thích.
+- Thêm nút `Chụp & chấm ngay` để gọi trực tiếp luồng chụp HD vốn có nhưng trước đây chưa được gắn vào giao diện.
+- Thêm kiểm tra HTTPS / `getUserMedia` / kích thước preview và thông báo lỗi rõ hơn.
+- Giữ nguyên Realtime OMR v4.6 và chế độ Chụp/Chọn ảnh dự phòng.
+
+
+## v4.7 — Auto Scan / Auto Grade
+- Bật mặc định chế độ **Tự chấm khi ổn định**.
+- Camera liên tục nhận 4 marker chính, marker phụ, Mã đề và đáp án.
+- Chỉ tự chụp khi phiếu gần như đứng yên và cùng kết quả được xác nhận 3 khung hình liên tiếp.
+- Khi đủ 3/3, app tự lấy ảnh HD rồi chấm chính thức, không cần bấm nút chụp.
+- Sau khi chấm thành công, camera tạm khóa để tránh chấm trùng cùng một phiếu; dùng **Quét bài tiếp theo** để mở lại.
+- Nút **Chụp & chấm ngay** vẫn được giữ làm phương án dự phòng.

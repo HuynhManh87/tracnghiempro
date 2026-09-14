@@ -1,0 +1,10 @@
+OMR Mobile React v4.6.1 — Camera Fix
+PASS - captureLiveAndGrade đã được gắn vào nút Chụp & chấm ngay
+PASS - Bỏ min width/height cứng khi mở camera
+PASS - Có fallback 3840 -> 1920 -> facingMode -> video:true
+PASS - Kiểm tra HTTPS trước khi mở camera
+PASS - Chẩn đoán getUserMedia và độ phân giải preview
+PASS - Thông báo NotAllowed / NotFound / NotReadable / Overconstrained rõ hơn
+PASS - Nút Chụp & chấm ngay chỉ bật khi camera đang chạy
+PASS - JavaScript engine parse OK bằng node --check
+PASS - fragments.js parse OK bằng node --check

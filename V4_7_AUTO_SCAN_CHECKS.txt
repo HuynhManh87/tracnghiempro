@@ -1,0 +1,9 @@
+OMR Mobile React v4.7 - AUTO SCAN / AUTO GRADE
+
+- Camera preview analyzes the sheet continuously.
+- Auto-grade is ON by default.
+- Requires: 4 main markers, >=4 auxiliary markers, valid exam code, low motion, same recognition result for 3 consecutive frames.
+- When stable 3/3, app automatically captures a high-resolution still and runs the final grade.
+- Manual "Capture & grade now" remains as fallback.
+- Auto-grade pauses after a successful final grade to prevent duplicate grading of the same sheet.
+- Use "Quét bài tiếp theo" to re-arm for the next sheet.
