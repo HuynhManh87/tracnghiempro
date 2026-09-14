@@ -25,3 +25,11 @@ Cách này tránh viết lại toàn bộ trong một lần và giảm nguy cơ 
 - Local marker offsets are detected after the global homography and interpolated vertically on the left/right edges, then blended horizontally for each bubble coordinate.
 - Scan quality gate blocks grading on insufficient page coverage, extreme perspective, or partially detected v2 side markers.
 - Legacy four-marker sheets remain readable in compatibility mode.
+
+
+## v4.2 — History Excel export
+Tính năng xuất điểm Excel được bổ sung ở tab Lịch sử mà không thay đổi schema Firebase. Dữ liệu lịch sử v3.63/v4.0/v4.1 hiện có tiếp tục được dùng. Những lịch sử cũ thiếu template hiện tại vẫn xuất tổng điểm; điểm Phần I/III có thể để trống nếu không còn đủ cấu hình mẫu để tính lại.
+
+
+## v4.3
+Bổ sung nhận diện học sinh OMR và danh sách học sinh. Không đổi cấu trúc Authentication, Firestore Rules hay Storage Rules. Dữ liệu `roster` được lưu bên trong `teachers/{uid}/app/state.stateJson`.

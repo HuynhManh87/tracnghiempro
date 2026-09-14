@@ -1,8 +1,8 @@
-# OMR Mobile React v4.1
+# OMR Mobile React v4.3
 
 Bản React/Vite chuyển từ OMR Mobile v3.63.
 
-## Mục tiêu của bản v4.1
+## Mục tiêu của bản v4.3
 
 - Giữ nguyên dữ liệu Firebase hiện tại (`teachers`, `access`, `admins`, `sharedAnswerPackages`).
 - Giữ nguyên thuật toán OMR, in phiếu, camera, lịch sử, PDF/Excel, Admin và kho đáp án dùng chung.
@@ -75,3 +75,29 @@ Giữ v3.63 đang chạy làm bản production dự phòng. Deploy v4.1 lên m�
 
 ### Lưu ý khi chuyển từ phiếu cũ
 Sau khi nâng lên v4.1, nên in lại phiếu để có 6 marker phụ Auto OMR v2. Phiếu cũ 4-marker vẫn chấm được ở chế độ tương thích. Khi in: A4 dọc, 100%/Actual size, không Fit/Shrink.
+
+
+## v4.3 — Xuất điểm Excel theo lớp / phòng
+- Tab Lịch sử có bộ lọc theo kỳ kiểm tra, môn, loại lớp/phòng và lớp/phòng cụ thể.
+- Bảng lịch sử hiển thị đúng dữ liệu đang lọc.
+- Xuất `.xlsx` theo bộ lọc hiện tại.
+- Nếu có nhiều lớp/phòng, workbook tự tạo: `Tong hop`, `Thong ke` và từng sheet `Lop_*` / `Phong_*`.
+- Excel có họ tên, lớp/phòng, số hiệu/SBD, kỳ kiểm tra, môn, mã đề, điểm từng phần, điểm OMR, thời gian chấm, trạng thái ảnh và thông tin Auto OMR v2.
+- Không thay đổi Firestore Rules và không cần chuyển dữ liệu cũ.
+
+
+## v4.3 — Nhận diện học sinh bằng Số hiệu / SBD OMR
+- Phiếu có thêm khối OMR 3 chữ số cạnh khối TÔ MÃ ĐỀ.
+- Thi tại lớp: nhãn tự đổi thành `TÔ SỐ HIỆU`.
+- Chia phòng thi: nhãn tự đổi thành `TÔ SBD`.
+- Camera đọc đồng thời Số hiệu/SBD và Mã đề bằng đúng tọa độ đã in trên phiếu.
+- Tab Lịch sử có quản lý danh sách học sinh từ Excel/CSV.
+- File danh sách hỗ trợ: `Họ và tên`, `Lớp`, `Số hiệu`, `Phòng thi`, `SBD`.
+- Khi chấm, app dùng Số hiệu hoặc SBD để tự tra Họ tên + Lớp + Phòng.
+- Kết quả thi chia phòng vẫn có thể xuất Excel gộp ngược theo lớp gốc.
+- Có nút điền lại tên cho các kết quả cũ nếu đã chấm trước khi nhập danh sách.
+- Roster được lưu trong state của chính giáo viên và đồng bộ Firebase; không cần sửa Firestore Rules.
+
+### Quy ước
+- Số hiệu/SBD dùng 3 chữ số: `1 → 001`, `12 → 012`, `125 → 125`.
+- Khi in: A4 dọc, 100% / Actual size, không Fit/Shrink.

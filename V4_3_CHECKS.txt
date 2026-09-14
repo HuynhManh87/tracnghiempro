@@ -1,0 +1,15 @@
+OMR Mobile React v4.3 — static checks
+PASS  version_header
+PASS  candidate_3_digits
+PASS  candidate_exam_separate_blocks
+PASS  visual_uses_layout_coords
+PASS  grade_reads_candidate
+PASS  roster_lookup
+PASS  roster_excel_import
+PASS  cloud_sync_roster
+PASS  history_by_original_class
+PASS  room_to_class_export
+PASS  candidate_label_dynamic
+PASS  auto_name_fill
+PASS  duplicate_warning
+PASS  no_rules_change_needed

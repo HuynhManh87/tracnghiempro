@@ -179,3 +179,21 @@ h2{font-size:19px}.sectionTitle{margin:16px 0 8px;font-size:15px;color:var(--bra
 
 /* React v4.1 migration shell */
 .reactVersionTag{font-size:10px;font-weight:900;padding:3px 7px;border-radius:999px;background:#eef5ff;color:#1557b0;border:1px solid #cfe0fb}
+
+/* v4.2 - Excel export theo lớp/phòng */
+.historyExcelExport{margin-top:12px;padding:12px;border:1px solid #b9d7c3;border-radius:12px;background:#f5fbf7}
+.historyExcelExport>b{display:block;margin-bottom:4px}
+.historyExcelGrid{display:grid;grid-template-columns:1.15fr 1fr .8fr 1fr auto auto;gap:9px;align-items:end;margin-top:9px}
+.historyExcelGrid .btn{min-width:110px}
+#historyExportStatus{margin-top:8px}
+@media(max-width:1100px){.historyExcelGrid{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:760px){.historyExcelGrid{grid-template-columns:1fr}.historyExcelGrid .btn{width:100%}}
+
+
+/* v4.3 — Student roster + OMR identity */
+.studentRosterBox{margin:12px 0;border:1px solid #c7d7ef;border-radius:12px;background:#f8fbff;padding:12px}
+.studentRosterActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.studentRosterActions .btn{width:auto}
+.rosterPreviewWrap{max-height:230px;overflow:auto;margin-top:9px;border:1px solid var(--line);border-radius:9px;background:#fff}.rosterPreview{margin:0;font-size:11px}.rosterPreview th{position:sticky;top:0;background:#f3f6fa;z-index:1}
+.studentLookupStatus{margin:8px 0 10px;padding:8px 10px;border-radius:9px;background:#f3f4f6;font-size:11px;color:#4b5563}.studentLookupStatus.ok{background:#ecfdf3;color:#08733c;border:1px solid #b7e4c7}.studentLookupStatus.warn{background:#fff8e8;color:#8a5600;border:1px solid #f3d28b}
+.idBlockV43{position:absolute;box-sizing:border-box;border:1.2px solid #333;border-radius:2px;background:#fff;overflow:hidden}.idBlockV43 .idTitleV43{position:absolute;left:5px;right:5px;top:5px;height:18px;line-height:18px;text-align:center;font-size:9.5px;font-weight:900;border-bottom:1px solid #aaa}.idBlockV43 .idGridOutline{position:absolute;left:8px;right:8px;top:56px;bottom:8px;border:1.1px solid #9aa1ad;border-radius:2px}.idBlockV43 .idWriteBoxV43{position:absolute;width:17px;height:17px;border:1.3px solid #111;background:#fff;transform:translate(-50%,-50%)}.idBlockV43 .idDigitLabelV43{position:absolute;width:10px;text-align:right;font-size:7px;line-height:8px;transform:translate(-100%,-50%)}.idBlockV43 .idBubbleV43{position:absolute;width:8px;height:8px;border:1px solid #111;border-radius:50%;transform:translate(-50%,-50%);box-sizing:border-box;background:#fff}
+@media(max-width:850px){.studentRosterActions{display:grid;grid-template-columns:1fr 1fr}.studentRosterActions .btn{width:100%}}

@@ -9,9 +9,9 @@ const DEFAULT_FIREBASE_CONFIG={
   messagingSenderId:'944038528926',
   appId:'1:944038528926:web:f459ff47eb84c4e0d4788f'
 };
-const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
+const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null;
+let templates=[],assignments={},studentRoster=[],imgState=null,markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -135,12 +135,13 @@ function hasScopedData(sid=scopeId()){return !!(parseJson(localStorage.getItem(n
 function loadScopedStateOnly(){
   templates=parseJson(getScoped(LS_TPL,'[]'),[])||[];
   assignments=parseJson(getScoped(LS_ASSIGN,'{}'),{})||{};
+  studentRoster=parseJson(getScoped(LS_ROSTER,'[]'),[])||[];
   currentProfile=getLocalProfile();
   if(!templates.length)templates=defaultTemplates();
   templates.forEach(normalizeTemplate);cleanupAssignments();
 }
 function writeScopedStateLocal(){
-  setScoped(LS_TPL,JSON.stringify(templates));setScoped(LS_ASSIGN,JSON.stringify(assignments));setScoped(LS_PROFILE,JSON.stringify(currentProfile||{}));
+  setScoped(LS_TPL,JSON.stringify(templates));setScoped(LS_ASSIGN,JSON.stringify(assignments));setScoped(LS_ROSTER,JSON.stringify(studentRoster));setScoped(LS_PROFILE,JSON.stringify(currentProfile||{}));
 }
 
 async function checkAdminRole(uid){
@@ -608,28 +609,30 @@ async function activateTeacher(user){
       const s=cloudState||d;
       if(Array.isArray(s.templates)&&s.templates.length)templates=s.templates;
       if(s.assignments&&typeof s.assignments==='object')assignments=s.assignments;
+      if(Array.isArray(s.roster))studentRoster=s.roster;
       if(Array.isArray(s.history))setScoped(LS_HIS,JSON.stringify(s.history));
       if(s.imageMode)setScoped(LS_IMG_MODE,s.imageMode);
       if(Number.isFinite(+s.imageRetention))setScoped(LS_IMG_RET,String(+s.imageRetention));
     }else if(!localHad){
-      templates=defaultTemplates();assignments={};setScoped(LS_HIS,'[]');
+      templates=defaultTemplates();assignments={};studentRoster=[];setScoped(LS_HIS,'[]');setScoped(LS_ROSTER,'[]');
     }
   }catch(e){
     console.warn('Tải cloud thất bại',e);
     if($('#cloudSyncStatus'))$('#cloudSyncStatus').textContent='Không tải được dữ liệu cloud, đang dùng bản lưu trên thiết bị.';
   }
   templates.forEach(normalizeTemplate);cleanupAssignments();writeScopedStateLocal();cloudLoading=false;
-  renderAccountState();applyProfileDefaults();initImageSettings();refreshSelects();fitSheet();unlockAppAfterLogin();queueCloudSync();loadSharedAnswerLibrary();if(currentIsAdmin)loadAdminDashboard();
+  renderAccountState();applyProfileDefaults();initImageSettings();refreshSelects();fitSheet();renderRosterManager();renderHistory();unlockAppAfterLogin();queueCloudSync();loadSharedAnswerLibrary();if(currentIsAdmin)loadAdminDashboard();
 }
 function currentCloudState(){
   const payload={
     templates,
     assignments,
+    roster:studentRoster,
     history:getHistory(),
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.0'
+    appVersion:'4.3'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -638,7 +641,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.0',
+    appVersion:'4.3',
     storageFormat:'json-v1'
   };
 }
@@ -1023,7 +1026,7 @@ function assignmentContexts(){
 }
 function assignmentDisplayTarget(type,target){return type==='class'?`Lớp ${target}`:`Phòng ${target}`}
 function blankVersion(code,t){return{code:String(code),mcKey:Array(t.mcCount).fill('A'),tfKey:Array.from({length:t.tfCount},()=>['Đ','Đ','Đ','Đ']),shortKey:Array(t.shortCount).fill('0')}}
-function makeTemplate(name,mc,tf,sh,cut='normal',codes=['101','102','103','104']){const t={id:uid(),name,schoolName:'',testName:'KIỂM TRA THƯỜNG XUYÊN',periodicMode:'class',subject:'Toán',duration:45,mcCount:mc,tfCount:tf,shortCount:sh,shortLen:4,cut,idMode:cut==='cut'?'phach':'sbd',idDigits:6,examinerCount:1,examForm:'objective',totalPages:2,essayLineSpacing:9,maxScore:10,weights:{mc:3,short:3},tfItemScore:.25,versions:[]};t.versions=codes.map(c=>blankVersion(c,t));return t}
+function makeTemplate(name,mc,tf,sh,cut='normal',codes=['101','102','103','104']){const t={id:uid(),name,schoolName:'',testName:'KIỂM TRA THƯỜNG XUYÊN',periodicMode:'class',subject:'Toán',duration:45,mcCount:mc,tfCount:tf,shortCount:sh,shortLen:4,cut,idMode:cut==='cut'?'phach':'sbd',idDigits:3,examinerCount:1,examForm:'objective',totalPages:2,essayLineSpacing:9,maxScore:10,weights:{mc:3,short:3},tfItemScore:.25,versions:[]};t.versions=codes.map(c=>blankVersion(c,t));return t}
 function defaultTemplates(){return [makeTemplate('Chuẩn 12 TN + 4 Đ/S + 6 TLN',12,4,6,'normal'),makeTemplate('Chuẩn cắt phách 12 TN + 4 Đ/S + 6 TLN',12,4,6,'cut'),makeTemplate('20 TN + 4 Đ/S + 4 TLN',20,4,4,'normal')]}
 function migrate(){
   let v3=parseJson(getScoped(LS_TPL,'[]'),[]);
@@ -1037,7 +1040,7 @@ function migrate(){
   seed();
 }
 function seed(){templates=defaultTemplates();saveAll()}
-function normalizeTemplate(t){t.schoolName=t.schoolName||'';t.testName=t.testName||'';t.periodicMode=(t.periodicMode==='class'||t.periodicMode==='room')?t.periodicMode:(isFrequentTest(t)?'class':'room');t.subject=t.subject||'';t.duration=Number.isFinite(+t.duration)&&+t.duration>0?+t.duration:'';t.idMode=t.idMode|| (t.cut==='cut'?'phach':'sbd');t.idDigits=+t.idDigits||6;t.examinerCount=[1,2,3].includes(+t.examinerCount)?+t.examinerCount:1;t.examForm=(t.examForm==='mixed'?'mixed':'objective');t.totalPages=Math.max(2,Math.min(6,+t.totalPages||2));t.essayLineSpacing=Math.max(1,Math.min(12,+t.essayLineSpacing||9));t.shortLen=+t.shortLen||4;t.maxScore=+t.maxScore||10;t.weights=t.weights||{mc:3,short:3};t.tfItemScore=Number.isFinite(+t.tfItemScore)?+t.tfItemScore:.25;if(!Array.isArray(t.versions)||!t.versions.length)t.versions=[blankVersion('101',t)];t.versions.forEach(v=>{if(!Array.isArray(v.mcKey)||v.mcKey.length!==t.mcCount)v.mcKey=Array(t.mcCount).fill('A');if(!Array.isArray(v.tfKey)||v.tfKey.length!==t.tfCount)v.tfKey=Array.from({length:t.tfCount},()=>['Đ','Đ','Đ','Đ']);v.tfKey=v.tfKey.map(x=>Array.isArray(x)&&x.length===4?x:['Đ','Đ','Đ','Đ']);if(!Array.isArray(v.shortKey)||v.shortKey.length!==t.shortCount)v.shortKey=Array(t.shortCount).fill('0')})}
+function normalizeTemplate(t){t.schoolName=t.schoolName||'';t.testName=t.testName||'';t.periodicMode=(t.periodicMode==='class'||t.periodicMode==='room')?t.periodicMode:(isFrequentTest(t)?'class':'room');t.subject=t.subject||'';t.duration=Number.isFinite(+t.duration)&&+t.duration>0?+t.duration:'';t.idMode=t.idMode|| (t.cut==='cut'?'phach':'sbd');t.idDigits=3;t.examinerCount=[1,2,3].includes(+t.examinerCount)?+t.examinerCount:1;t.examForm=(t.examForm==='mixed'?'mixed':'objective');t.totalPages=Math.max(2,Math.min(6,+t.totalPages||2));t.essayLineSpacing=Math.max(1,Math.min(12,+t.essayLineSpacing||9));t.shortLen=+t.shortLen||4;t.maxScore=+t.maxScore||10;t.weights=t.weights||{mc:3,short:3};t.tfItemScore=Number.isFinite(+t.tfItemScore)?+t.tfItemScore:.25;if(!Array.isArray(t.versions)||!t.versions.length)t.versions=[blankVersion('101',t)];t.versions.forEach(v=>{if(!Array.isArray(v.mcKey)||v.mcKey.length!==t.mcCount)v.mcKey=Array(t.mcCount).fill('A');if(!Array.isArray(v.tfKey)||v.tfKey.length!==t.tfCount)v.tfKey=Array.from({length:t.tfCount},()=>['Đ','Đ','Đ','Đ']);v.tfKey=v.tfKey.map(x=>Array.isArray(x)&&x.length===4?x:['Đ','Đ','Đ','Đ']);if(!Array.isArray(v.shortKey)||v.shortKey.length!==t.shortCount)v.shortKey=Array(t.shortCount).fill('0')})}
 function updateExamOrganizationUI(){
   const name=$('#testName')?.value||'';
   const frequent=name==='KIỂM TRA THƯỜNG XUYÊN';
@@ -1132,7 +1135,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.0',
+    appVersion:'4.3',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1169,7 +1172,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.0',
+    appVersion:'4.3',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -1438,6 +1441,70 @@ $('#sharedFilterText').oninput=renderSharedAnswerLibrary;
 $('#shareGrade').onchange=syncShareMetaFromTemplate;
 $('#shareTitle').addEventListener('focus',syncShareMetaFromTemplate);
 
+
+function candidateLabelForTemplate(t){return showRoomField(t)?'SBD':'SỐ HIỆU'}
+function normalizeCandidateCode(v){const d=String(v??'').replace(/\D/g,'');if(!d||d.length>3)return'';return d.padStart(3,'0')}
+function normalizeRosterRoom(v){let d=String(v??'').trim().replace(/^ph[oòóỏõọ]ng\s*/i,'').replace(/\D/g,'');if(!d)return'';const n=+d;return Number.isFinite(n)&&n>0?String(n):''}
+function foldHeader(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function findRosterHeader(headers,aliases){const fs=headers.map(foldHeader);for(const a of aliases){const i=fs.indexOf(foldHeader(a));if(i>=0)return i}return-1}
+function saveRoster(){setScoped(LS_ROSTER,JSON.stringify(studentRoster));queueCloudSync();renderRosterManager()}
+function rosterLookup(code,t,target=''){
+  const id=normalizeCandidateCode(code);if(!id)return null;
+  const type=targetTypeForTemplate(t);
+  let rows=[];
+  if(type==='class')rows=studentRoster.filter(r=>String(r.className||'').trim()===String(target||'').trim()&&normalizeCandidateCode(r.number)===id);
+  else rows=studentRoster.filter(r=>normalizeRosterRoom(r.room)===normalizeRosterRoom(target)&&normalizeCandidateCode(r.sbd)===id);
+  if(rows.length===1)return rows[0];
+  if(rows.length>1)return{...rows[0],_ambiguous:true};
+  // Fallback only when the identifier is globally unique in the relevant mode.
+  rows=type==='class'?studentRoster.filter(r=>normalizeCandidateCode(r.number)===id):studentRoster.filter(r=>normalizeCandidateCode(r.sbd)===id);
+  return rows.length===1?rows[0]:null;
+}
+function rosterRowKey(r){return[foldHeader(r.name),String(r.className||''),normalizeCandidateCode(r.number),normalizeRosterRoom(r.room),normalizeCandidateCode(r.sbd)].join('|')}
+function renderRosterManager(){
+  const body=$('#rosterPreviewBody'),status=$('#rosterStatus');if(!body||!status)return;
+  const classes=new Set(studentRoster.map(r=>String(r.className||'').trim()).filter(Boolean)),rooms=new Set(studentRoster.map(r=>normalizeRosterRoom(r.room)).filter(Boolean));
+  status.textContent=studentRoster.length?`Đã lưu ${studentRoster.length} học sinh • ${classes.size} lớp • ${rooms.size} phòng có dữ liệu. Danh sách được đồng bộ theo tài khoản giáo viên.`:'Chưa có danh sách học sinh.';
+  body.innerHTML=studentRoster.slice(0,150).map(r=>`<tr><td>${esc(r.name||'')}</td><td>${esc(r.className||'')}</td><td>${esc(normalizeCandidateCode(r.number)||'')}</td><td>${esc(normalizeRosterRoom(r.room)||'')}</td><td>${esc(normalizeCandidateCode(r.sbd)||'')}</td></tr>`).join('')+(studentRoster.length>150?`<tr><td colspan="5" class="help">… còn ${studentRoster.length-150} học sinh</td></tr>`:'');
+}
+async function parseRosterFile(file){
+  const XLSX=await loadSheetJs(),buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  if(!aoa.length)throw new Error('File không có dữ liệu.');
+  const headers=aoa[0].map(String),iName=findRosterHeader(headers,['Họ và tên','Họ tên','Tên học sinh','Ho ten']),iClass=findRosterHeader(headers,['Lớp','Lop']),iNo=findRosterHeader(headers,['Số hiệu','So hieu','STT lớp','STT']),iRoom=findRosterHeader(headers,['Phòng thi','Phòng','Phong thi','Phong']),iSbd=findRosterHeader(headers,['SBD','Số báo danh','So bao danh']);
+  if(iName<0||iClass<0)throw new Error('File cần tối thiểu hai cột “Họ và tên” và “Lớp”.');
+  if(iNo<0&&iSbd<0)throw new Error('File cần có cột “Số hiệu” hoặc “SBD”.');
+  const rows=[];let skipped=0;
+  for(let r=1;r<aoa.length;r++){
+    const x=aoa[r],name=String(x[iName]??'').trim(),className=String(x[iClass]??'').trim(),number=iNo>=0?normalizeCandidateCode(x[iNo]):'',room=iRoom>=0?normalizeRosterRoom(x[iRoom]):'',sbd=iSbd>=0?normalizeCandidateCode(x[iSbd]):'';
+    if(!name&&!className&&!number&&!sbd)continue;
+    if(!name||!className||(!number&&!sbd)){skipped++;continue}
+    rows.push({name,className,number,room,sbd});
+  }
+  if(!rows.length)throw new Error('Không tìm thấy dòng học sinh hợp lệ.');
+  return{rows,skipped};
+}
+async function importRosterFile(file){
+  try{
+    const parsed=await parseRosterFile(file),mode=studentRoster.length?prompt(`Đã đọc ${parsed.rows.length} học sinh.\n\n1 = Thay toàn bộ danh sách hiện tại\n2 = Gộp với danh sách hiện tại\n0 = Hủy`,'1'):'1';
+    if(mode===null||String(mode).trim()==='0')return;
+    if(String(mode).trim()==='2'){
+      const map=new Map(studentRoster.map(r=>[rosterRowKey(r),r]));parsed.rows.forEach(r=>map.set(rosterRowKey(r),r));studentRoster=[...map.values()];
+    }else studentRoster=parsed.rows;
+    saveRoster();renderHistory();alert(`Đã lưu ${studentRoster.length} học sinh.${parsed.skipped?` Bỏ qua ${parsed.skipped} dòng thiếu thông tin.`:''}`);
+  }catch(e){alert('Không nhập được danh sách học sinh: '+(e?.message||e))}
+}
+async function downloadRosterTemplate(){
+  try{
+    const XLSX=await loadSheetJs(),rows=[['Họ và tên','Lớp','Số hiệu','Phòng thi','SBD'],['Nguyễn Văn An','8/1',1,1,1],['Trần Thị Bình','8/1',2,1,2],['Lê Minh Châu','8/2',1,2,35]],ws=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();
+    ws['!cols']=[{wch:28},{wch:10},{wch:12},{wch:12},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'Danh sach');XLSX.writeFile(wb,'Mau_Danh_Sach_Hoc_Sinh_OMR_v4.3.xlsx');
+  }catch(e){alert('Không tạo được file mẫu: '+(e?.message||e))}
+}
+function applyRosterToExistingHistory(){
+  const his=getHistory();let changed=0;
+  his.forEach(h=>{if(!h.candidateId)return;const fake={periodicMode:h.targetType==='room'?'room':'class',testName:h.testName||'',idMode:'sbd'};const r=rosterLookup(h.candidateId,fake,h.target);if(!r||r._ambiguous)return;if(!h.student&&r.name){h.student=r.name;changed++}if(!h.studentClass&&r.className)h.studentClass=r.className;if(!h.studentRoom&&(r.room||h.targetType==='room'))h.studentRoom=normalizeRosterRoom(r.room||h.target)});
+  if(changed||his.length){saveHistory(his);renderHistory()}alert(changed?`Đã điền tên cho ${changed} kết quả cũ.`:'Không có kết quả cũ nào cần cập nhật tên.');
+}
+
 function buildLayout(t){
 normalizeTemplate(t);
 const W=794,Hh=1123,idTop=t.cut==='cut'?306:216,reviewTop=idTop,start=idTop+195,end=45,left=55,right=55,width=W-left-right;
@@ -1446,16 +1513,18 @@ const activeCount=(t.mcCount?1:0)+(t.tfCount?1:0)+(t.shortCount?1:0);
 const sectionGap=activeCount<=1?11:activeCount===2?8:5;
 const L={W,H:Hh,idTop,reviewTop,id:[],exam:[],mc:[],mcGroups:[],tf:[],tfGroups:[],short:[],titles:[],overflow:false,activeCount};
 
-const idW=t.idDigits*45+22,idLeft=62;
-for(let c=0;c<t.idDigits;c++){
-  const x=idLeft+22+c*45;
-  L.id.push({pos:c+1,x,vals:Array.from({length:10},(_,d)=>({label:String(d),x,y:idTop+36+d*12.4}))})
-}
-const codeLen=t.versions[0].code.length,examLeft=510;
-for(let c=0;c<codeLen;c++){
-  const x=examLeft+18+c*47;
-  L.exam.push({pos:c+1,x,vals:Array.from({length:10},(_,d)=>({label:String(d),x,y:idTop+36+d*12.4}))})
-}
+// v4.3: hai khối nhận dạng đặt cạnh nhau, dùng chung tọa độ in và tọa độ camera.
+const blockW=105,idBoxLeft=305,examBoxLeft=420,rowStart=idTop+72,rowStep=10.6;
+const makeDigitCols=(leftBox,count)=>{
+  const innerLeft=leftBox+17,innerRight=leftBox+blockW-17,span=innerRight-innerLeft;
+  return Array.from({length:count},(_,c)=>{
+    const x=innerLeft+(c+.5)*span/count;
+    return{pos:c+1,x,vals:Array.from({length:10},(_,d)=>({label:String(d),x,y:rowStart+d*rowStep}))};
+  });
+};
+L.id=makeDigitCols(idBoxLeft,3);
+const codeLen=t.versions[0].code.length;L.exam=makeDigitCols(examBoxLeft,codeLen);
+L.idBox={x:idBoxLeft,y:idTop,w:blockW,h:187};L.examBox={x:examBoxLeft,y:idTop,w:blockW,h:187};
 
 if(t.mcCount){
   L.titles.push({text:'PHẦN I. TRẮC NGHIỆM 4 LỰA CHỌN — Chọn A, B, C hoặc D',y});
@@ -1588,8 +1657,8 @@ return L
 }
 function renderMiniSquares(n,cls='writeSquare'){return `<span class="writeSquares">${Array.from({length:n},()=>`<span class="${cls}"></span>`).join('')}</span>`}
 function renderSerialSquares(n=2){return `<span class="serialSquares">${Array.from({length:n},()=>'<span class="serialSquare"></span>').join('')}</span>`}
-function renderGuideBox(top,t){const items=['Điền đầy đủ thông tin ở đầu phiếu theo hướng dẫn của giám thị.','Ghi mã đề vào 3 ô vuông và tô mã đề ở khung bên phải.'];if(t.mcCount)items.push('Phần I: mỗi câu chỉ tô 1 ô A, B, C hoặc D.');if(t.tfCount)items.push('Phần II: mỗi ý chỉ tô 1 ô Đ hoặc S.');if(t.shortCount)items.push('Phần III: tô dấu âm (nếu có), vị trí dấu phẩy và từng chữ số của đáp án.');items.push('Tô kín ô, không gạch chéo, không làm nhàu hoặc gấp phiếu.');return `<div class="guideBox" data-items="${items.length}" style="--guide-top:${top}px"><div class="guideTitle">HƯỚNG DẪN HỌC SINH SỬ DỤNG PHIẾU</div><ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol></div>`}
-function renderIdBlock(title,cols,left,top,w,writeCount=0){const hgt=writeCount>0?187:163;let h=`<div class="idBlock" style="left:${left}px;top:${top}px;width:${w}px;height:${hgt}px"><div class="idTitle">${title}</div>`;if(writeCount>0){h+=`<div class="idWrite"><div class="idWriteCols">${Array.from({length:writeCount},()=>'<span class="idWriteCell"><span class="idWriteBox"></span></span>').join('')}</div></div>`}h+=`<div class="idGridFrame"><div class="idCols">`;cols.forEach(c=>{h+=`<div class="idCol">`;c.vals.forEach(v=>h+=`<div class="idRow"><span>${v.label}</span><span class="idBubble"></span></div>`);h+='</div>'});return h+'</div></div></div>'}
+function renderGuideBox(top,t){const idLabel=candidateLabelForTemplate(t),items=['Điền đầy đủ thông tin ở đầu phiếu theo hướng dẫn của giám thị.',`Ghi ${idLabel==='SBD'?'SBD':'Số hiệu'} vào 3 ô vuông và tô đúng 3 chữ số ở khung nhận dạng.`,'Ghi mã đề vào các ô vuông và tô mã đề ở khung bên cạnh.'];if(t.mcCount)items.push('Phần I: mỗi câu chỉ tô 1 ô A, B, C hoặc D.');if(t.tfCount)items.push('Phần II: mỗi ý chỉ tô 1 ô Đ hoặc S.');if(t.shortCount)items.push('Phần III: tô dấu âm (nếu có), vị trí dấu phẩy và từng chữ số của đáp án.');items.push('Tô kín ô, không gạch chéo, không làm nhàu hoặc gấp phiếu.');return `<div class="guideBox" data-items="${items.length}" style="--guide-top:${top}px"><div class="guideTitle">HƯỚNG DẪN HỌC SINH SỬ DỤNG PHIẾU</div><ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol></div>`}
+function renderIdBlock(title,cols,box,writeCount=0){let h=`<div class="idBlockV43" style="left:${box.x}px;top:${box.y}px;width:${box.w}px;height:${box.h}px"><div class="idTitleV43">${title}</div><div class="idGridOutline"></div>`;if(writeCount>0){cols.slice(0,writeCount).forEach(c=>h+=`<span class="idWriteBoxV43" style="left:${c.x-box.x}px;top:42px"></span>`)}cols.forEach(c=>c.vals.forEach(v=>{h+=`<span class="idDigitLabelV43" style="left:${v.x-box.x-5}px;top:${v.y-box.y}px">${v.label}</span><span class="idBubbleV43" style="left:${v.x-box.x}px;top:${v.y-box.y}px"></span>`}));return h+'</div>'}
 function renderReviewRow(t,top){let score='';if(t.examForm==='mixed'){score=`<table class="scoreTable mixed"><tr class="scoreTitleRow"><th colspan="3">ĐIỂM</th></tr><tr class="scoreLabelRow"><th>Trắc nghiệm</th><th>Tự luận</th><th>Tổng điểm</th></tr><tr class="scoreWriteRow"><td></td><td></td><td></td></tr></table>`}else{score=`<table class="scoreTable objective"><tr class="scoreTitleRow"><th>ĐIỂM</th></tr><tr class="scoreWriteRow"><td></td></tr></table>`}const count=Math.max(1,Math.min(3,Number(t.examinerCount)||1)),totalH=187,gap=8;let scoreH,sigH;if(count===1){scoreH=t.examForm==='mixed'?88:84;sigH=totalH-scoreH-gap}else if(count===2){scoreH=t.examForm==='mixed'?66:62;sigH=Math.floor((totalH-scoreH-gap*2)/2)}else{scoreH=t.examForm==='mixed'?58:54;sigH=Math.floor((totalH-scoreH-gap*3)/3)}const sig=count===1?`<div class="sigBox" style="height:${sigH}px">CHỮ KÝ GIÁM KHẢO</div>`:Array.from({length:count},(_,i)=>`<div class="sigBox" style="height:${sigH}px">CHỮ KÝ GIÁM KHẢO ${i+1}</div>`).join('');return `<div class="reviewStack" style="--review-top:${top}px"><div class="scorePanel" style="height:${scoreH}px">${score}</div><div class="signaturePanel n${count}" style="margin-top:${gap}px;gap:${gap}px">${sig}</div></div>`}
 function renderEssayPages(t){const box=$('#essayPages');if(!box)return;box.innerHTML='';if(!t||t.examForm!=='mixed')return;const total=Math.max(2,Math.min(6,+t.totalPages||2)),gap=Math.max(1,Math.min(12,+t.essayLineSpacing||9)),pxPerMm=1123/297;for(let pg=2;pg<=total;pg++){const cut=t.cut==='cut',topPx=cut?318:112,bottomPx=48,usableMm=(1123-topPx-bottomPx)/pxPerMm,lineCount=Math.max(1,Math.floor(usableMm/gap)),page=document.createElement('div');page.className='essayPage'+(cut?' cutEssay':'');const cutPart=cut?`<div class="essayPhachWarning">HỌC SINH KHÔNG ĐƯỢC GHI VÀO PHẦN NÀY,<br>VÌ ĐÂY LÀ PHÁCH SẼ RỌC ĐI MẤT</div><div class="essayCutLine"><span>✂ CẮT THEO ĐƯỜNG NÀY</span></div>`:'';const meta=cut?'':`<div class="essayMeta"><span>Họ và tên: ............................................................</span><span style="text-align:right">Lớp: ............... &nbsp;&nbsp; Mã đề: ............</span></div>`;page.innerHTML=`${cutPart}<div class="essayPageTitle">PHẦN BÀI LÀM TỰ LUẬN</div>${meta}<div class="essayLines">${Array.from({length:lineCount},()=>`<div class="essayLine" style="height:${gap}mm"></div>`).join('')}</div><div class="essayPageNo">Trang ${pg}/${total}</div>`;box.appendChild(page)}}
 function autoFitGuideBox(){
@@ -1634,17 +1703,17 @@ function renderInlineEssayPage1(t,L){
   return h;
 }
 
-function renderSheet(){const t=cur($('#printTpl').value)||templates[0],sh=$('#sheet');if(!t){sh.innerHTML='';return}$('#printTpl').value=t.id;const L=buildLayout(t),codeLen=t.versions[0].code.length,showRoom=showRoomField(t),frequent=isFrequentTest(t);$('#capacityWarning').style.display=L.overflow?'block':'none';$('#capacityWarning').textContent=L.overflow?'Mẫu này quá dày cho một trang A4. Hãy giảm số câu hoặc số vị trí trả lời ngắn.':'';const giamsat=frequent?'':`<div class="sigInline"><span class="sigLine">Chữ ký giám thị 1:<span class="sigFill"></span></span><span class="sigLine">Chữ ký giám thị 2:<span class="sigFill"></span></span></div>`;let h=`<svg class="marker m1" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m2" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m3" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m4" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg>${AUTO_OMR_V2.auxRows.flatMap((yy,ri)=>AUTO_OMR_V2.auxX.map((xx,si)=>`<svg class="auxMarker" data-row="${ri}" data-side="${si}" style="left:${xx-AUTO_OMR_V2.auxSize/2}px;top:${yy-AUTO_OMR_V2.auxSize/2}px" viewBox="0 0 ${AUTO_OMR_V2.auxSize} ${AUTO_OMR_V2.auxSize}" width="${AUTO_OMR_V2.auxSize}" height="${AUTO_OMR_V2.auxSize}" aria-hidden="true"><rect x="0" y="0" width="${AUTO_OMR_V2.auxSize}" height="${AUTO_OMR_V2.auxSize}"/></svg>`)).join('')}${t.testName?`<div class="examHeading">${esc(t.testName.toUpperCase())}</div>`:''}${(t.subject||t.duration)?`<div class="examSubHeading">${t.subject?`MÔN: ${esc(String(t.subject).toUpperCase())}`:''}${t.subject&&t.duration?' &nbsp; • &nbsp; ':''}${t.duration?`THỜI GIAN: ${esc(t.duration)} PHÚT`:''}</div>`:''}<div class="title">PHIẾU TRẢ LỜI TRẮC NGHIỆM</div>`;if(t.cut==='cut'){
+function renderSheet(){const t=cur($('#printTpl').value)||templates[0],sh=$('#sheet');if(!t){sh.innerHTML='';return}$('#printTpl').value=t.id;const L=buildLayout(t),codeLen=t.versions[0].code.length,showRoom=showRoomField(t),frequent=isFrequentTest(t),candidateLabel=candidateLabelForTemplate(t);$('#capacityWarning').style.display=L.overflow?'block':'none';$('#capacityWarning').textContent=L.overflow?'Mẫu này quá dày cho một trang A4. Hãy giảm số câu hoặc số vị trí trả lời ngắn.':'';const giamsat=frequent?'':`<div class="sigInline"><span class="sigLine">Chữ ký giám thị 1:<span class="sigFill"></span></span><span class="sigLine">Chữ ký giám thị 2:<span class="sigFill"></span></span></div>`;let h=`<svg class="marker m1" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m2" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m3" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg><svg class="marker m4" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><rect x="0" y="0" width="26" height="26"/></svg>${AUTO_OMR_V2.auxRows.flatMap((yy,ri)=>AUTO_OMR_V2.auxX.map((xx,si)=>`<svg class="auxMarker" data-row="${ri}" data-side="${si}" style="left:${xx-AUTO_OMR_V2.auxSize/2}px;top:${yy-AUTO_OMR_V2.auxSize/2}px" viewBox="0 0 ${AUTO_OMR_V2.auxSize} ${AUTO_OMR_V2.auxSize}" width="${AUTO_OMR_V2.auxSize}" height="${AUTO_OMR_V2.auxSize}" aria-hidden="true"><rect x="0" y="0" width="${AUTO_OMR_V2.auxSize}" height="${AUTO_OMR_V2.auxSize}"/></svg>`)).join('')}${t.testName?`<div class="examHeading">${esc(t.testName.toUpperCase())}</div>`:''}${(t.subject||t.duration)?`<div class="examSubHeading">${t.subject?`MÔN: ${esc(String(t.subject).toUpperCase())}`:''}${t.subject&&t.duration?' &nbsp; • &nbsp; ':''}${t.duration?`THỜI GIAN: ${esc(t.duration)} PHÚT`:''}</div>`:''}<div class="title">PHIẾU TRẢ LỜI TRẮC NGHIỆM</div>`;if(t.cut==='cut'){
   const cutStudentInfo=frequent
-    ?`<div class="infoRow freqName"><span>Họ và tên:</span><span class="infoFill name"></span></div><div class="infoRow freqClass"><span>Lớp:</span><span class="infoFill cls"></span><span>Số hiệu:</span><span class="infoFill code"></span></div>`
-    :`<div class="infoRow"><span>Họ và tên:</span><span class="infoFill name"></span><span>Lớp:</span><span class="infoFill cls"></span><span>Số hiệu:</span><span class="infoFill code"></span></div>${showRoom?`<div class="infoRow"><span>Phòng thi:</span><span class="infoFill room"></span></div>`:''}`;
+    ?`<div class="infoRow freqName"><span>Họ và tên:</span><span class="infoFill name"></span></div><div class="infoRow freqClass"><span>Lớp:</span><span class="infoFill cls"></span><span>${candidateLabel==='SBD'?'SBD':'Số hiệu'}:</span><span class="infoFill code"></span></div>`
+    :`<div class="infoRow"><span>Họ và tên:</span><span class="infoFill name"></span><span>Lớp:</span><span class="infoFill cls"></span><span>${candidateLabel==='SBD'?'SBD':'Số hiệu'}:</span><span class="infoFill code"></span></div>${showRoom?`<div class="infoRow"><span>Phòng thi:</span><span class="infoFill room"></span></div>`:''}`;
   h+=`<div class="cutStub"><div class="schoolRow"><span class="schoolValue">${esc(t.schoolName||'........................................................')}</span></div>${cutStudentInfo}<div class="phachRow"><span class="phachLabel phach">Mã phách:</span><span class="dotsField"></span><span class="phachLabel stt">Số thứ tự:</span>${renderSerialSquares(2)}<span class="phachLabel made">Mã đề:</span>${renderMiniSquares(codeLen)}</div>${giamsat}</div><div class="cutLine"><span>✂ CẮT THEO ĐƯỜNG NÀY</span></div><div class="anonBox"><div class="phachRow"><span class="phachLabel phach">Mã phách:</span><span class="dotsField short"></span><span class="phachLabel stt">Số thứ tự:</span>${renderSerialSquares(2)}<span class="phachSpacer"></span></div></div>`;
 }else{
   const normalStudentInfo=frequent
-    ?`<div class="infoRow freqName"><span>Họ và tên:</span><span class="infoFill name"></span></div><div class="infoRow freqClass"><span>Lớp:</span><span class="infoFill cls"></span><span>Số hiệu:</span><span class="infoFill code"></span></div><div class="infoRow freqCode"><span>Mã đề:</span>${renderMiniSquares(codeLen)}</div>`
-    :`<div class="infoRow"><span>Họ và tên:</span><span class="infoFill name"></span><span>Lớp:</span><span class="infoFill cls"></span><span>Số hiệu:</span><span class="infoFill code"></span></div><div class="infoRow">${showRoom?`<span>Phòng thi:</span><span class="infoFill room"></span>`:''}<span>Mã đề:</span>${renderMiniSquares(codeLen)}</div>${giamsat}`;
+    ?`<div class="infoRow freqName"><span>Họ và tên:</span><span class="infoFill name"></span></div><div class="infoRow freqClass"><span>Lớp:</span><span class="infoFill cls"></span><span>${candidateLabel==='SBD'?'SBD':'Số hiệu'}:</span><span class="infoFill code"></span></div><div class="infoRow freqCode"><span>Mã đề:</span>${renderMiniSquares(codeLen)}</div>`
+    :`<div class="infoRow"><span>Họ và tên:</span><span class="infoFill name"></span><span>Lớp:</span><span class="infoFill cls"></span><span>${candidateLabel==='SBD'?'SBD':'Số hiệu'}:</span><span class="infoFill code"></span></div><div class="infoRow">${showRoom?`<span>Phòng thi:</span><span class="infoFill room"></span>`:''}<span>Mã đề:</span>${renderMiniSquares(codeLen)}</div>${giamsat}`;
   h+=`<div class="infoBox"><div class="schoolRow"><span class="schoolValue">${esc(t.schoolName||'........................................................')}</span></div>${normalStudentInfo}</div>`;
-}h+=renderGuideBox(L.idTop,t);h+=renderIdBlock('TÔ MÃ ĐỀ',L.exam,312,L.idTop,210,codeLen);h+=renderReviewRow(t,L.reviewTop);L.titles.forEach(x=>h+=`<div class="sheetSecTitle" style="top:${x.y}px">${x.text}</div>`);
+}h+=renderGuideBox(L.idTop,t);h+=renderIdBlock(candidateLabel==='SBD'?'TÔ SBD':'TÔ SỐ HIỆU',L.id,L.idBox,3);h+=renderIdBlock('TÔ MÃ ĐỀ',L.exam,L.examBox,codeLen);h+=renderReviewRow(t,L.reviewTop);L.titles.forEach(x=>h+=`<div class="sheetSecTitle" style="top:${x.y}px">${x.text}</div>`);
 L.mcGroups.forEach(g=>{h+=`<div class="mcGroup" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px">${g.optionXs.map((x,j)=>`<span class="mcHeadLetter" style="left:${x-g.x}px">${'ABCD'[j]}</span>`).join('')}</div>`});L.mc.forEach(q=>{h+=`<span class="mcNum" style="left:${q.x}px;top:${q.y-6}px">${q.q}</span>`;q.opts.forEach(o=>h+=`<span class="bubble" style="position:absolute;left:${o.x-6}px;top:${o.y-6}px"></span>`)});
 L.tfGroups.forEach(g=>{h+=`<div class="tfGroup" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px"></div>`});L.tf.forEach(q=>{h+=`<div class="tfQTitle" style="left:${q.x}px;top:${q.y+4}px;width:${q.w}px">Câu ${q.q}</div><span class="tfColHead" style="left:${q.trueX}px;top:${q.y+18}px">Đúng</span><span class="tfColHead" style="left:${q.falseX}px;top:${q.y+18}px">Sai</span>`;q.items.forEach((it,j)=>{h+=`<span class="tfItemLabel" style="left:${it.labelX}px;top:${it.d.y-6}px">${it.item})</span><span class="bubble" style="position:absolute;left:${it.d.x-6}px;top:${it.d.y-6}px"></span><span class="bubble" style="position:absolute;left:${it.s.x-6}px;top:${it.s.y-6}px"></span>`})});
 L.short.forEach(q=>{h+=`<div class="shortBlock" style="left:${q.x}px;top:${q.y}px;width:${q.w}px;height:${q.h}px"><div class="shortHead">Câu ${q.q}</div>${q.digitXs.map(x=>`<span class="shortWriteBox" style="left:${x-q.x-8.5}px;top:22px"></span>`).join('')}<span class="shortRowLabel" style="top:${q.sign.y-q.y}px">−</span><span class="shortRowLabel" style="top:${q.commas.length?q.commas[0].y-q.y:57}px">,</span>${q.digits[0].vals.map(v=>`<span class="shortRowLabel" style="top:${v.y-q.y}px">${v.label}</span>`).join('')}</div>`;h+=`<span class="bubble" style="position:absolute;left:${q.sign.x-4.5}px;top:${q.sign.y-4.5}px"></span>`;q.commas.forEach(c=>h+=`<span class="bubble" style="position:absolute;left:${c.x-4.5}px;top:${c.y-4.5}px"></span>`);q.digits.forEach(c=>c.vals.forEach(v=>h+=`<span class="bubble" style="position:absolute;left:${v.x-4.5}px;top:${v.y-4.5}px"></span>`))});h+=renderInlineEssayPage1(t,L);sh.innerHTML=h;const markerCount=sh.querySelectorAll('svg.marker').length,auxCount=sh.querySelectorAll('svg.auxMarker').length;if(markerCount!==4)console.error('OMR corner marker invariant failed:',markerCount);if(auxCount!==6)console.error('OMR v2 auxiliary marker invariant failed:',auxCount);autoFitGuideBox();renderEssayPages(t)}
@@ -1681,8 +1750,9 @@ function wTable(rows,widths=[]){
 function docxQuestionLines(t){let out='';if(t.mcCount){out+=wText('PHẦN I. TRẮC NGHIỆM 4 LỰA CHỌN — Chọn A, B, C hoặc D',true,21);const cols=4,displayCount=t.mcCount<=20?20:Math.ceil(t.mcCount/4)*4,perCol=displayCount/4,counts=[perCol,perCol,perCol,perCol];const cells=[];let qStart=0;for(let c=0;c<cols;c++){let cell=wText('      A        B        C        D',true,16,'center');for(let r=0;r<counts[c];r++)cell+=wText(`${qStart+r+1}.    ○        ○        ○        ○`,false,16);cells.push(cell);qStart+=counts[c]}out+=wTable([cells],Array(cols).fill(Math.floor(9600/cols)))}if(t.tfCount){out+=wText(`PHẦN II. ĐÚNG / SAI — Mỗi ý đúng được ${Number(t.tfItemScore).toFixed(2)} điểm`,true,21);const per=Math.min(4,t.tfCount);for(let base=0;base<t.tfCount;base+=per){const count=Math.min(per,t.tfCount-base),cells=[];for(let i=0;i<count;i++){const q=base+i+1;let c=wText(`Câu ${q}`,true,16,'center')+wText(`          Đúng       Sai`,true,14,'center');['a','b','c','d'].forEach(x=>c+=wText(`${x})           ○          ○`,false,16));cells.push(c)}out+=wTable([cells],Array(count).fill(Math.floor(9600/count)))}}if(t.shortCount){out+=wText('PHẦN III. TRẢ LỜI NGẮN',true,21);const per=Math.min(6,t.shortCount);for(let base=0;base<t.shortCount;base+=per){const cells=[];for(let i=0;i<per&&base+i<t.shortCount;i++){let c=wText(`Câu ${base+i+1}`,true,16,'center')+wText(Array.from({length:t.shortLen},()=> '□').join('  '),false,18,'center')+wText('−      ○',false,15)+wText(',    ○  ○  ○',false,15);for(let d=0;d<=9;d++)c+=wText(`${d}   ○  ○  ○  ○`,false,15);cells.push(c)}out+=wTable([cells],Array(cells.length).fill(Math.floor(9600/cells.length)))}}return out}
 function buildDocxXml(t){
   normalizeTemplate(t);
-  const codeLen=t.versions[0].code.length,codeBoxes='□ '.repeat(codeLen).trim(),showRoom=showRoomField(t);
-  const guide=['Điền đầy đủ thông tin ở đầu phiếu theo hướng dẫn của giám thị.','Ghi mã đề vào các ô vuông và tô mã đề.'];
+  const codeLen=t.versions[0].code.length,codeBoxes='□ '.repeat(codeLen).trim(),showRoom=showRoomField(t),candidateLabel=candidateLabelForTemplate(t);
+  const idBoxes='□ □ □',idCircles='○ ○ ○',codeCircles=Array.from({length:codeLen},()=> '○').join(' '),idMatrixRows=Array.from({length:10},(_,d)=>`${d} ${idCircles}          ${d} ${codeCircles}`).join('\n');
+  const guide=['Điền đầy đủ thông tin ở đầu phiếu theo hướng dẫn của giám thị.',`Ghi ${candidateLabel==='SBD'?'SBD':'Số hiệu'} vào 3 ô vuông và tô đủ 3 chữ số.`, 'Ghi mã đề vào các ô vuông và tô mã đề.'];
   if(t.mcCount)guide.push('Phần I: mỗi câu chỉ chọn một đáp án A, B, C hoặc D.');
   if(t.tfCount)guide.push('Phần II: mỗi ý chỉ chọn Đúng hoặc Sai.');
   if(t.shortCount)guide.push('Phần III: ghi/tô đáp án trả lời ngắn theo mẫu.');
@@ -1693,12 +1763,12 @@ function buildDocxXml(t){
   body+=wText('PHIẾU TRẢ LỜI TRẮC NGHIỆM',true,30,'center');
   const frequent=isFrequentTest(t);
   if(frequent){
-    const info=wText((t.schoolName||'').toUpperCase(),true,21)+wText('Họ và tên: ................................................................................................',false,20)+wText('Lớp: ..............................        Số hiệu: ..............................',false,20)+wText(`Mã đề: ${codeBoxes}`,false,20);
+    const info=wText((t.schoolName||'').toUpperCase(),true,21)+wText('Họ và tên: ................................................................................................',false,20)+wText(`Lớp: ..............................        ${candidateLabel}: ..............................`,false,20)+wText(`Mã đề: ${codeBoxes}`,false,20);
     body+=wTable([[info]],[9600]);
   }else{
     body+=wTable([
       [wText((t.schoolName||'').toUpperCase(),true,21),wText('Họ và tên: ........................................................',false,20)],
-      [wText('Lớp: ....................   Số hiệu: ....................',false,20),wText(`${showRoom?'Phòng thi: ....................   ':''}Mã đề: ${codeBoxes}`,false,20)]
+      [wText(`Lớp: ....................   ${candidateLabel}: ....................`,false,20),wText(`${showRoom?'Phòng thi: ....................   ':''}Mã đề: ${codeBoxes}`,false,20)]
     ],[4800,4800]);
   }
   if(t.cut==='cut'){
@@ -1707,7 +1777,7 @@ function buildDocxXml(t){
     body+=wTable([[wText('Mã phách: ....................................',false,20),wText('Số thứ tự: □ □',false,20)]],[4800,4800]);
   }
   if(!frequent)body+=wText('Chữ ký giám thị 1: ........................................        Chữ ký giám thị 2: ........................................',false,18);
-  body+=wTable([[guide.map((x,i)=>wText(`${i+1}. ${x}`,false,18)).join(''),wText(`TÔ MÃ ĐỀ\n\n${codeBoxes}\n\n0 ○   0 ○   0 ○\n1 ○   1 ○   1 ○\n2 ○   2 ○   2 ○\n3 ○   3 ○   3 ○\n4 ○   4 ○   4 ○\n5 ○   5 ○   5 ○\n6 ○   6 ○   6 ○\n7 ○   7 ○   7 ○\n8 ○   8 ○   8 ○\n9 ○   9 ○   9 ○`,true,18,'center')]],[4800,4800]);
+  body+=wTable([[guide.map((x,i)=>wText(`${i+1}. ${x}`,false,18)).join(''),wText(`TÔ ${candidateLabel}     |     TÔ MÃ ĐỀ\n\n${idBoxes}          ${codeBoxes}\n\n${idMatrixRows}`,true,17,'center')]],[4800,4800]);
   let scoreCell=t.examForm==='mixed'
     ?wText('ĐIỂM',true,18,'center')+wText('Trắc nghiệm: ............   Tự luận: ............',false,18,'center')+wText('TỔNG ĐIỂM: ............',true,18,'center')
     :wText('ĐIỂM',true,18,'center')+wText('....................',false,22,'center');
@@ -1826,6 +1896,7 @@ function applyScanAssignment(){
   const item=c.targets.find(x=>x.target===target);if(!item)return;
   const t=cur(item.templateId);if(!t)return;
   $('#scanTpl').value=t.id;
+  if($('#detectedIdLabel'))$('#detectedIdLabel').textContent=c.type==='room'?'SBD nhận được':'Số hiệu nhận được';
   $('#scanAutoInfo').innerHTML=`${assignmentDisplayTarget(c.type,target)} → tự dùng mẫu <b>${esc(t.name)}</b> • ${esc(t.testName)} • ${esc(t.subject)} • Mã đề: <b>${t.versions.map(v=>esc(v.code)).join(', ')}</b>.`;
   clearResult();
 }
@@ -1911,7 +1982,7 @@ function analyzeScanQuality(){
   const corrected=buildLocalCorrection(obs);return{ok:true,mode:'v2',message:`Ảnh đạt chuẩn; nhận ${auxCount}/6 marker phụ và đã hiệu chỉnh biến dạng theo vùng.`,mainMarkers:4,auxCount,pageAreaRatio:areaRatio,localCorrection:corrected}
 }
 function strokeSheetRect(x,y,w,h,color,label){const pts=[mapSheet(x,y),mapSheet(x+w,y),mapSheet(x+w,y+h),mapSheet(x,y+h)];ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.stroke();if(label){ctx.font='700 13px sans-serif';ctx.fillText(label,pts[0].x+4,pts[0].y-5)}ctx.restore()}
-function drawRecognitionZones(L){if(!L||!H)return;if(L.exam?.length){const vals=L.exam.flatMap(c=>c.vals),xs=vals.map(v=>v.x),ys=vals.map(v=>v.y);strokeSheetRect(Math.min(...xs)-13,Math.min(...ys)-8,Math.max(...xs)-Math.min(...xs)+26,Math.max(...ys)-Math.min(...ys)+16,'#7c3aed','Mã đề')}for(const g of L.mcGroups||[])strokeSheetRect(g.x,g.y,g.w,g.h,'#2563eb','I');for(const g of L.tfGroups||[])strokeSheetRect(g.x,g.y,g.w,g.h,'#ea580c','II');for(const q of L.short||[])strokeSheetRect(q.x,q.y,q.w,q.h,'#0891b2','III')}
+function drawRecognitionZones(L){if(!L||!H)return;if(L.id?.length&&L.idBox)strokeSheetRect(L.idBox.x,L.idBox.y,L.idBox.w,L.idBox.h,'#16a34a','Số hiệu/SBD');if(L.exam?.length){const vals=L.exam.flatMap(c=>c.vals),xs=vals.map(v=>v.x),ys=vals.map(v=>v.y);strokeSheetRect(Math.min(...xs)-13,Math.min(...ys)-8,Math.max(...xs)-Math.min(...xs)+26,Math.max(...ys)-Math.min(...ys)+16,'#7c3aed','Mã đề')}for(const g of L.mcGroups||[])strokeSheetRect(g.x,g.y,g.w,g.h,'#2563eb','I');for(const g of L.tfGroups||[])strokeSheetRect(g.x,g.y,g.w,g.h,'#ea580c','II');for(const q of L.short||[])strokeSheetRect(q.x,q.y,q.w,q.h,'#0891b2','III')}
 function drawOverlay(layout=null){if(!imgState)return;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(imgState.img,0,0,canvas.width,canvas.height);ctx.save();ctx.lineWidth=4;ctx.strokeStyle='#00e5ff';ctx.fillStyle='#ffeb3b';ctx.font='18px sans-serif';markerPoints.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.fill();ctx.strokeText(String(i+1),p.x+12,p.y-8)});if(markerPoints.length>1){ctx.beginPath();ctx.moveTo(markerPoints[0].x,markerPoints[0].y);for(let i=1;i<markerPoints.length;i++)ctx.lineTo(markerPoints[i].x,markerPoints[i].y);if(markerPoints.length===4)ctx.closePath();ctx.stroke()}if(H&&auxMarkerObservations.length){ctx.lineWidth=2;auxMarkerObservations.forEach((o,i)=>{const p=o.point;ctx.strokeStyle=o.found?'#16a34a':'#ef4444';ctx.fillStyle=o.found?'rgba(22,163,74,.35)':'rgba(239,68,68,.2)';ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=o.found?'#16a34a':'#ef4444';ctx.font='13px sans-serif';ctx.fillText('A'+(i+1),p.x+9,p.y-7)})}ctx.restore();if(layout)drawRecognitionZones(layout)}
 $('#autoCorners').onclick=()=>{if(!imgState)return;manualMode=false;markerPoints=[];resetScanQuality();const ok=autoDetectMarkers();if(ok)scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();if(!ok)setStatus('Không nhận đủ 4 marker chính. Hãy chụp lại hoặc chọn thủ công.','err');else if(!scanQuality.ok)setStatus('Ảnh chưa đạt chuẩn: '+scanQuality.message,'err');else setStatus(scanQuality.mode==='v2'?'Đã nhận Auto OMR v2 và hiệu chỉnh marker phụ.':'Đã nhận phiếu 4-marker kiểu cũ.','ok')}
 $('#manualCorners').onclick=()=>{if(!imgState)return;manualMode=true;markerPoints=[];H=null;resetScanQuality();drawOverlay();setStatus('Chế độ thủ công: chạm tâm 4 ô đen theo thứ tự trên trái → trên phải → dưới phải → dưới trái.','warn')}
@@ -1921,15 +1992,19 @@ function darknessAtSheet(x,y,rSheet=4){const p=mapSheet(x,y),sc=Math.max(.3,scal
 function detectOne(points,rSheet=3.5){const vals=points.map(o=>darknessAtSheet(o.x,o.y,rSheet)),order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=order[0],second=order[1]||{v:0};if(best.v<.16)return{idx:-1,state:'blank',vals};if(second.v>.16&&second.v>best.v*.76)return{idx:-2,state:'multi',vals};return{idx:best.i,state:'one',vals}}
 function readDigits(cols){let s='',bad=false;for(const c of cols){const d=detectOne(c.vals,2.8);if(d.idx>=0)s+=c.vals[d.idx].label;else{bad=true;s+='?'}}return{value:s,bad}}
 function grade(){if($('#scanSource').value==='assigned'&&!$('#scanTarget').value){alert('Hãy chọn lớp hoặc phòng thi đã được phân công.');return}const t=cur($('#scanTpl').value);if(!t){alert('Chưa có mẫu');return}normalizeTemplate(t);if(!imgState){alert('Hãy chụp hoặc chọn ảnh bài làm.');return}if(markerPoints.length!==4||!H){const ok=autoDetectMarkers();if(!ok){drawOverlay();alert('Không nhận được đủ 4 marker chính. Hãy chụp lại hoặc chọn 4 marker thủ công.');return}}scanQuality=analyzeScanQuality();drawOverlay();updateScanQualityUI();if(!scanQuality.ok){setStatus('Ảnh chưa đạt chuẩn Auto OMR v2: '+scanQuality.message+' Hãy chụp lại.','err');alert('Ảnh chưa đạt để chấm chính xác. '+scanQuality.message+'\n\nHãy chụp lại, bảo đảm tờ giấy phẳng, đủ sáng và thấy đủ 4 góc.');return}restoreRawCanvas();
-const L=buildLayout(t),rid={value:'',bad:false},rex=readDigits(L.exam);$('#detectedId').textContent='—';$('#detectedExam').textContent=rex.value;const v=t.versions.find(x=>x.code===rex.value);if(!v){setStatus('Đã đọc mã đề '+rex.value+' nhưng mã này chưa có trong mẫu. Không thể chọn đáp án.','err');alert('Mã đề nhận được: '+rex.value+' chưa tồn tại trong mẫu này.');return}
+const L=buildLayout(t),rid=readDigits(L.id),rex=readDigits(L.exam),candidateId=rid.bad?'':normalizeCandidateCode(rid.value);$('#detectedIdLabel').textContent=(targetTypeForTemplate(t)==='room'?'SBD nhận được':'Số hiệu nhận được');$('#detectedId').textContent=candidateId||'Không đọc được';$('#detectedExam').textContent=rex.value;const v=t.versions.find(x=>x.code===rex.value);if(!v){setStatus('Đã đọc mã đề '+rex.value+' nhưng mã này chưa có trong mẫu. Không thể chọn đáp án.','err');alert('Mã đề nhận được: '+rex.value+' chưa tồn tại trong mẫu này.');return}
 let mc=[],tf=[],sh=[],mcCorrect=0,tfRaw=0,shCorrect=0;L.mc.filter(q=>q.active!==false).forEach((q,i)=>{const d=detectOne(q.opts,3.7),ans=d.idx>=0?q.opts[d.idx].label:(d.idx===-2?'Nhiều ô':'Trống'),ok=d.idx>=0&&ans===v.mcKey[i];if(ok)mcCorrect++;mc.push({q:q.q,ans,key:v.mcKey[i],ok})});L.tf.forEach((q,i)=>{let correctItems=0,det=[];q.items.forEach((it,j)=>{const d=detectOne([it.d,it.s],3.5),a=d.idx===0?'Đ':d.idx===1?'S':d.idx===-2?'Nhiều':'Trống',ok=a===v.tfKey[i][j];if(ok)correctItems++;det.push({item:it.item,ans:a,key:v.tfKey[i][j],ok})});const raw=+(correctItems*t.tfItemScore).toFixed(2);tfRaw+=raw;tf.push({q:q.q,correctItems,raw,det})});L.short.forEach((q,i)=>{let bad=false,digitVals=[];q.digits.forEach(c=>{const d=detectOne(c.vals,2.3);if(d.idx>=0)digitVals.push(c.vals[d.idx].label);else if(d.idx===-1)digitVals.push('');else{digitVals.push('?');bad=true}});let last=-1;for(let k=digitVals.length-1;k>=0;k--)if(digitVals[k]!==''&&digitVals[k]!=='?'){last=k;break}if(last>=0){for(let k=0;k<=last;k++)if(digitVals[k]==='')bad=true}let digits=last>=0?digitVals.slice(0,last+1).join(''):'';const signDark=darknessAtSheet(q.sign.x,q.sign.y,2.3)>.16,commaDet=q.commas.length?detectOne(q.commas,2.3):{idx:-1};if(commaDet.idx===-2)bad=true;if(commaDet.idx>=0){const pos=q.commas[commaDet.idx].gap;if(pos>=digits.length)bad=true;else digits=digits.slice(0,pos)+','+digits.slice(pos)}if(signDark&&digits)digits='-'+digits;const ans=normalizeShort(digits),key=normalizeShort(v.shortKey[i]),ok=!bad&&ans!==''&&ans===key;if(ok)shCorrect++;sh.push({q:q.q,ans:ans||'Trống',key,ok})});
-const mcPts=t.mcCount?mcCorrect/t.mcCount*t.weights.mc:0,tfPts=tfRaw,shPts=t.shortCount?shCorrect/t.shortCount*t.weights.short:0,possible=t.weights.mc+t.tfCount*4*t.tfItemScore+t.weights.short,totalRaw=mcPts+tfPts+shPts,total=+(possible?totalRaw/possible*t.maxScore:0).toFixed(2);const scanCtx=assignmentContexts().find(x=>x.key===$('#scanContext').value),scanTarget=$('#scanSource').value==='assigned'?$('#scanTarget').value:'';lastGrade={time:new Date().toISOString(),templateId:t.id,templateName:t.name,testName:t.testName,subject:t.subject,targetType:scanCtx?.type||'',target:scanTarget,idMode:t.idMode,candidateId:rid.value,examCode:rex.value,mcCorrect,mcTotal:t.mcCount,tfRaw:+tfRaw.toFixed(2),tfTotal:t.tfCount,shortCorrect:shCorrect,shortTotal:t.shortCount,score:total,max:t.maxScore,scanMode:scanQuality?.mode||'legacy',auxMarkers:scanQuality?.auxCount||0,localCorrection:!!scanQuality?.localCorrection,mc,tf,sh};$('#scoreBox').textContent=`${total} / ${t.maxScore}`;$('#mcScore').textContent=t.mcCount?`${mcCorrect}/${t.mcCount}`:'—';$('#tfScore').textContent=t.tfCount?`${tfRaw.toFixed(2)}/${(t.tfCount*4*t.tfItemScore).toFixed(2)}`:'—';$('#shortScore').textContent=t.shortCount?`${shCorrect}/${t.shortCount}`:'—';$('#gradeSummary').innerHTML=`Đã tự chọn đáp án <b>mã ${esc(rex.value)}</b>. Điểm thô: I <b>${mcPts.toFixed(2)}</b> • II <b>${tfPts.toFixed(2)}</b> • III <b>${shPts.toFixed(2)}</b>.<br><b>Auto OMR v2:</b> ${scanQuality.mode==='v2'?`nhận ${scanQuality.auxCount}/6 marker phụ • hiệu chỉnh cục bộ ${scanQuality.localCorrection?'đã bật':'không cần'}`:'phiếu 4-marker kiểu cũ'}.`;setStatus(scanQuality.mode==='v2'?'Chấm xong bằng Auto OMR v2. Ảnh đã qua kiểm tra chất lượng và hiệu chỉnh vùng.':'Chấm xong ở chế độ tương thích 4-marker. Nên dùng phiếu Auto OMR v2 cho độ ổn định cao hơn.','ok');let h='';if(mc.length)h+=`<h3>Phần I</h3><table class="table"><tr><th>Câu</th><th>Nhận dạng</th><th>Đáp án</th><th>KQ</th></tr>${mc.map(x=>`<tr><td>${x.q}</td><td>${x.ans}</td><td>${x.key}</td><td class="${x.ok?'ok':'err'}">${x.ok?'Đúng':'Sai'}</td></tr>`).join('')}</table>`;if(tf.length)h+=`<h3>Phần II</h3><table class="table"><tr><th>Câu</th><th>Ý đúng</th><th>Điểm</th><th>Chi tiết</th></tr>${tf.map(x=>`<tr><td>${x.q}</td><td>${x.correctItems}/4</td><td>${x.raw}</td><td>${x.det.map(z=>`${z.item}:${z.ans}/${z.key}`).join(' • ')}</td></tr>`).join('')}</table>`;if(sh.length)h+=`<h3>Phần III</h3><table class="table"><tr><th>Câu</th><th>Nhận dạng</th><th>Đáp án</th><th>KQ</th></tr>${sh.map(x=>`<tr><td>${x.q}</td><td>${esc(x.ans)}</td><td>${esc(x.key)}</td><td class="${x.ok?'ok':'err'}">${x.ok?'Đúng':'Sai'}</td></tr>`).join('')}</table>`;$('#detail').innerHTML=h;drawOverlay(L)}
-$('#gradeBtn').onclick=grade;$('#scanTpl').onchange=()=>{if($('#scanSource').value==='manual')clearResult()};function clearResult(){lastGrade=null;$('#scoreBox').textContent='-- / 10';$('#mcScore').textContent=$('#tfScore').textContent=$('#shortScore').textContent='--';$('#detectedId').textContent=$('#detectedExam').textContent='--';$('#gradeSummary').textContent='';$('#detail').innerHTML=''}$('#clearResult').onclick=clearResult;
+const scanCtx=assignmentContexts().find(x=>x.key===$('#scanContext').value),scanTarget=$('#scanSource').value==='assigned'?$('#scanTarget').value:'',studentMatch=candidateId?rosterLookup(candidateId,t,scanTarget):null;
+let resolvedStudent='',resolvedClass='',resolvedRoom='';
+if(studentMatch&&!studentMatch._ambiguous){resolvedStudent=studentMatch.name||'';resolvedClass=studentMatch.className||'';resolvedRoom=normalizeRosterRoom(studentMatch.room)||(targetTypeForTemplate(t)==='room'?scanTarget:'');$('#studentName').value=resolvedStudent;$('#studentLookupStatus').className='studentLookupStatus ok';$('#studentLookupStatus').textContent=`Đã nhận ${candidateLabelForTemplate(t)==='SBD'?'SBD':'Số hiệu'} ${candidateId} → ${resolvedStudent}${resolvedClass?' • Lớp '+resolvedClass:''}${resolvedRoom?' • Phòng '+resolvedRoom:''}.`}
+else{$('#studentLookupStatus').className='studentLookupStatus warn';$('#studentLookupStatus').textContent=candidateId?`Đã đọc ${candidateLabelForTemplate(t)==='SBD'?'SBD':'Số hiệu'} ${candidateId} nhưng chưa tìm thấy học sinh duy nhất trong danh sách của ${scanTarget?assignmentDisplayTarget(targetTypeForTemplate(t),scanTarget):'đợt chấm này'}.`:'Không đọc được Số hiệu/SBD. Điểm vẫn có thể chấm nhưng tên học sinh sẽ không tự điền.'}
+const mcPts=t.mcCount?mcCorrect/t.mcCount*t.weights.mc:0,tfPts=tfRaw,shPts=t.shortCount?shCorrect/t.shortCount*t.weights.short:0,possible=t.weights.mc+t.tfCount*4*t.tfItemScore+t.weights.short,totalRaw=mcPts+tfPts+shPts,total=+(possible?totalRaw/possible*t.maxScore:0).toFixed(2),scoreScale=possible?t.maxScore/possible:0,mcPoints=+(mcPts*scoreScale).toFixed(2),tfPoints=+(tfPts*scoreScale).toFixed(2),shortPoints=+(shPts*scoreScale).toFixed(2);lastGrade={time:new Date().toISOString(),templateId:t.id,templateName:t.name,testName:t.testName,subject:t.subject,targetType:scanCtx?.type||'',target:scanTarget,idMode:t.idMode,candidateId,studentFromRoster:resolvedStudent,studentClass:resolvedClass||(targetTypeForTemplate(t)==='class'?scanTarget:''),studentRoom:resolvedRoom,rosterMatched:!!resolvedStudent,examCode:rex.value,mcCorrect,mcTotal:t.mcCount,tfRaw:+tfRaw.toFixed(2),tfTotal:t.tfCount,shortCorrect:shCorrect,shortTotal:t.shortCount,score:total,max:t.maxScore,mcPoints,tfPoints,shortPoints,scanMode:scanQuality?.mode||'legacy',auxMarkers:scanQuality?.auxCount||0,localCorrection:!!scanQuality?.localCorrection,mc,tf,sh};$('#scoreBox').textContent=`${total} / ${t.maxScore}`;$('#mcScore').textContent=t.mcCount?`${mcCorrect}/${t.mcCount}`:'—';$('#tfScore').textContent=t.tfCount?`${tfRaw.toFixed(2)}/${(t.tfCount*4*t.tfItemScore).toFixed(2)}`:'—';$('#shortScore').textContent=t.shortCount?`${shCorrect}/${t.shortCount}`:'—';$('#gradeSummary').innerHTML=`${candidateId?`${candidateLabelForTemplate(t)==='SBD'?'SBD':'Số hiệu'} <b>${esc(candidateId)}</b>${resolvedStudent?` → <b>${esc(resolvedStudent)}</b>`:''}.<br>`:''}Đã tự chọn đáp án <b>mã ${esc(rex.value)}</b>. Điểm thô: I <b>${mcPts.toFixed(2)}</b> • II <b>${tfPts.toFixed(2)}</b> • III <b>${shPts.toFixed(2)}</b>.<br><b>Auto OMR v2:</b> ${scanQuality.mode==='v2'?`nhận ${scanQuality.auxCount}/6 marker phụ • hiệu chỉnh cục bộ ${scanQuality.localCorrection?'đã bật':'không cần'}`:'phiếu 4-marker kiểu cũ'}.`;setStatus(scanQuality.mode==='v2'?'Chấm xong bằng Auto OMR v2. Ảnh đã qua kiểm tra chất lượng và hiệu chỉnh vùng.':'Chấm xong ở chế độ tương thích 4-marker. Nên dùng phiếu Auto OMR v2 cho độ ổn định cao hơn.','ok');let h='';if(mc.length)h+=`<h3>Phần I</h3><table class="table"><tr><th>Câu</th><th>Nhận dạng</th><th>Đáp án</th><th>KQ</th></tr>${mc.map(x=>`<tr><td>${x.q}</td><td>${x.ans}</td><td>${x.key}</td><td class="${x.ok?'ok':'err'}">${x.ok?'Đúng':'Sai'}</td></tr>`).join('')}</table>`;if(tf.length)h+=`<h3>Phần II</h3><table class="table"><tr><th>Câu</th><th>Ý đúng</th><th>Điểm</th><th>Chi tiết</th></tr>${tf.map(x=>`<tr><td>${x.q}</td><td>${x.correctItems}/4</td><td>${x.raw}</td><td>${x.det.map(z=>`${z.item}:${z.ans}/${z.key}`).join(' • ')}</td></tr>`).join('')}</table>`;if(sh.length)h+=`<h3>Phần III</h3><table class="table"><tr><th>Câu</th><th>Nhận dạng</th><th>Đáp án</th><th>KQ</th></tr>${sh.map(x=>`<tr><td>${x.q}</td><td>${esc(x.ans)}</td><td>${esc(x.key)}</td><td class="${x.ok?'ok':'err'}">${x.ok?'Đúng':'Sai'}</td></tr>`).join('')}</table>`;$('#detail').innerHTML=h;drawOverlay(L)}
+$('#gradeBtn').onclick=grade;$('#scanTpl').onchange=()=>{if($('#scanSource').value==='manual'){const t=cur($('#scanTpl').value);if(t&&$('#detectedIdLabel'))$('#detectedIdLabel').textContent=targetTypeForTemplate(t)==='room'?'SBD nhận được':'Số hiệu nhận được';clearResult()}};function clearResult(){lastGrade=null;$('#scoreBox').textContent='-- / 10';$('#mcScore').textContent=$('#tfScore').textContent=$('#shortScore').textContent='--';$('#detectedId').textContent=$('#detectedExam').textContent='--';$('#studentLookupStatus').className='studentLookupStatus';$('#studentLookupStatus').textContent='Chưa nhận diện học sinh.';$('#studentName').value='';$('#gradeSummary').textContent='';$('#detail').innerHTML=''}$('#clearResult').onclick=clearResult;
 $('#saveResult').onclick=async()=>{
   if(!lastGrade){alert('Chưa có kết quả để lưu.');return}
   const btn=$('#saveResult');btn.disabled=true;
   const resultId='r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-  const student=$('#studentName').value.trim()||'',mode=getImageMode();
+  const student=$('#studentName').value.trim()||lastGrade.studentFromRoster||'',mode=getImageMode();
   const row={...lastGrade,id:resultId,student,imageId:null,imageMode:mode,imageBytes:0};
   let imageMsg='Không lưu ảnh.';
   try{
@@ -1952,17 +2027,87 @@ $('#saveResult').onclick=async()=>{
     row.imageError=String(err?.message||err);
     imageMsg='Kết quả đã lưu nhưng ảnh không lưu được.';
   }
-  const his=getHistory();his.unshift(row);saveHistory(his);
+  const his=getHistory();
+  if(row.candidateId){const dup=his.find(h=>h.candidateId===row.candidateId&&h.targetType===row.targetType&&h.target===row.target&&h.testName===row.testName&&h.subject===row.subject);if(dup&&!confirm(`Đã có kết quả của ${row.student||row.candidateId} trong cùng lớp/phòng và đợt kiểm tra. Vẫn lưu thêm kết quả này?`)){btn.disabled=false;return}}
+  his.unshift(row);saveHistory(his);
   await applyImageRetention();renderHistory();btn.disabled=false;
   alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}`);
 }
+function historyClassValue(h){return String(h?.studentClass||(h?.targetType==='class'?h.target:'')||'').trim()}
+function historyRoomValue(h){return normalizeRosterRoom(h?.studentRoom||(h?.targetType==='room'?h.target:'')||'')}
+function historyGroupLabel(h){const cls=historyClassValue(h),room=historyRoomValue(h);if(room&&cls)return`Phòng ${room} • Lớp ${cls}`;if(room)return`Phòng ${room}`;if(cls)return`Lớp ${cls}`;return''}
+function historyDerivedKey(h,type=''){if(type==='class'){const v=historyClassValue(h);return v?`class::${v}`:''}if(type==='room'){const v=historyRoomValue(h);return v?`room::${v}`:''}if(h?.target)return`${h.targetType||''}::${h.target}`;return''}
+function historyDerivedLabel(h,type=''){if(type==='class'){const v=historyClassValue(h);return v?`Lớp ${v}`:''}if(type==='room'){const v=historyRoomValue(h);return v?`Phòng ${v}`:''}return historyGroupLabel(h)}
+function historyFilterState(){return{test:$('#historyFilterTest')?.value||'',subject:$('#historyFilterSubject')?.value||'',type:$('#historyFilterType')?.value||'',target:$('#historyFilterTarget')?.value||''}}
+function historyFilteredRows(){const f=historyFilterState();return getHistory().filter(h=>{if(f.test&&String(h.testName||'')!==f.test)return false;if(f.subject&&String(h.subject||'')!==f.subject)return false;if(f.type&&!historyDerivedKey(h,f.type))return false;if(f.target&&historyDerivedKey(h,f.type)!==f.target)return false;return true})}
+function setHistoryFilterOptions(id,items,placeholder,valueFn=x=>x,labelFn=x=>x){const el=$(id);if(!el)return;const old=el.value;el.innerHTML=`<option value="">${esc(placeholder)}</option>`+items.map(x=>`<option value="${esc(valueFn(x))}">${esc(labelFn(x))}</option>`).join('');if([...el.options].some(o=>o.value===old))el.value=old}
+function refreshHistoryFilterOptions(){const his=getHistory(),tests=[...new Set(his.map(h=>String(h.testName||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')),subjects=[...new Set(his.map(h=>String(h.subject||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));setHistoryFilterOptions('#historyFilterTest',tests,'Tất cả kỳ kiểm tra');setHistoryFilterOptions('#historyFilterSubject',subjects,'Tất cả môn');const type=$('#historyFilterType')?.value||'',targets=[],seen=new Set();if(type){his.forEach(h=>{const key=historyDerivedKey(h,type);if(!key||seen.has(key))return;seen.add(key);targets.push({key,label:historyDerivedLabel(h,type)})})}else{his.forEach(h=>{const key=historyDerivedKey(h,'');if(!key||seen.has(key))return;seen.add(key);targets.push({key,label:historyDerivedLabel(h,'')})})}targets.sort((a,b)=>a.label.localeCompare(b.label,'vi',{numeric:true}));setHistoryFilterOptions('#historyFilterTarget',targets,'Tất cả lớp / phòng',x=>x.key,x=>x.label);const rows=historyFilteredRows(),status=$('#historyExportStatus'),groupType=type||'';if(status){const groups=new Set(rows.map(h=>historyDerivedKey(h,groupType)).filter(Boolean)).size;status.textContent=rows.length?`Đang hiển thị ${rows.length}/${his.length} kết quả • ${groups} nhóm. Excel sẽ xuất đúng dữ liệu đang lọc.`:'Không có kết quả phù hợp bộ lọc.'}}
+function historySectionScores(h){
+  if([h.mcPoints,h.tfPoints,h.shortPoints].some(v=>Number.isFinite(+v)))return{p1:Number.isFinite(+h.mcPoints)?+h.mcPoints:null,p2:Number.isFinite(+h.tfPoints)?+h.tfPoints:null,p3:Number.isFinite(+h.shortPoints)?+h.shortPoints:null};
+  const t=templates.find(x=>x.id===h.templateId)||templates.find(x=>x.name===h.templateName);
+  if(!t)return{p1:null,p2:Number.isFinite(+h.tfRaw)?+h.tfRaw:null,p3:null};
+  normalizeTemplate(t);
+  const raw1=h.mcTotal?((+h.mcCorrect||0)/(+h.mcTotal||1))*(+t.weights?.mc||0):0;
+  const raw2=Number.isFinite(+h.tfRaw)?+h.tfRaw:0;
+  const raw3=h.shortTotal?((+h.shortCorrect||0)/(+h.shortTotal||1))*(+t.weights?.short||0):0;
+  const possible=(+t.weights?.mc||0)+(+t.tfCount||0)*4*(+t.tfItemScore||0)+(+t.weights?.short||0);
+  const scale=possible>0?(+h.max||+t.maxScore||10)/possible:1;
+  return{p1:+(raw1*scale).toFixed(2),p2:+(raw2*scale).toFixed(2),p3:+(raw3*scale).toFixed(2)};
+}
+function historyExcelAoa(rows){
+  const head=['STT','Họ và tên','Lớp','Phòng thi','Số hiệu / SBD','Kỳ kiểm tra','Môn','Mã đề','Mẫu','Đúng Phần I','Tổng câu I','Điểm Phần I','Điểm Phần II','Đúng Phần III','Tổng câu III','Điểm Phần III','Điểm OMR','Thang điểm','Thời gian chấm','Chế độ quét','Marker phụ','Ảnh'];
+  const body=rows.map((h,i)=>{
+    const p=historySectionScores(h);
+    return[i+1,h.student||'',historyClassValue(h),historyRoomValue(h),h.candidateId||'',h.testName||'',h.subject||'',h.examCode||'',h.templateName||'',h.mcCorrect??'',h.mcTotal??'',p.p1??'',p.p2??'',h.shortCorrect??'',h.shortTotal??'',p.p3??'',Number.isFinite(+h.score)?+h.score:'',Number.isFinite(+h.max)?+h.max:'',new Date(h.time).toLocaleString('vi-VN'),h.scanMode||'',h.auxMarkers??'',h.imageId?'Có':'Không'];
+  });
+  return[head,...body];
+}
+function historyStatsAoa(rows,groupType=''){const mp=new Map();rows.forEach(h=>{const key=historyDerivedKey(h,groupType)||'unassigned',name=historyDerivedLabel(h,groupType)||'Chưa phân nhóm';if(!mp.has(key))mp.set(key,{name,count:0,sum:0,n:0,hi:null,lo:null});const a=mp.get(key);a.count++;const sc=Number(h.score);if(Number.isFinite(sc)){a.sum+=sc;a.n++;a.hi=a.hi===null?sc:Math.max(a.hi,sc);a.lo=a.lo===null?sc:Math.min(a.lo,sc)}});const data=[...mp.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi',{numeric:true}));return[['Nhóm','Số bài','Điểm trung bình','Cao nhất','Thấp nhất'],...data.map(a=>[a.name,a.count,a.n?+(a.sum/a.n).toFixed(2):'',a.hi??'',a.lo??''])]}
+function uniqueExcelSheetName(base,used){
+  let name=String(base||'Sheet').replace(/[\\/?*\[\]:]/g,'_').slice(0,31)||'Sheet',n=2;
+  const root=name;
+  while(used.has(name)){const suf='_'+n++;name=(root.slice(0,31-suf.length)+suf)}
+  used.add(name);return name;
+}
+async function exportHistoryExcel(){
+  const rows=historyFilteredRows(),status=$('#historyExportStatus');
+  if(!rows.length){alert('Không có kết quả phù hợp bộ lọc để xuất.');return}
+  if(status)status.textContent='Đang tạo file Excel…';
+  try{
+    const XLSX=await loadSheetJs(),wb=XLSX.utils.book_new(),used=new Set();
+    const add=(name,aoa)=>{
+      const ws=XLSX.utils.aoa_to_sheet(aoa);
+      const colCount=Math.max(...aoa.map(r=>r.length));
+      ws['!cols']=Array.from({length:colCount},(_,i)=>({wch:Math.min(34,Math.max(10,...aoa.slice(0,120).map(r=>String(r[i]??'').length+2)))}));
+      XLSX.utils.book_append_sheet(wb,ws,uniqueExcelSheetName(name,used));
+    };
+    add('Tong hop',historyExcelAoa(rows));
+    const f=historyFilterState(),groupType=f.type||'';add('Thong ke',historyStatsAoa(rows,groupType));
+    const groups=new Map();
+    rows.forEach(h=>{const key=historyDerivedKey(h,groupType);if(!key)return;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(h)});
+    [...groups.entries()].sort((a,b)=>historyDerivedLabel(a[1][0],groupType).localeCompare(historyDerivedLabel(b[1][0],groupType),'vi',{numeric:true})).forEach(([key,arr])=>{
+      const label=historyDerivedLabel(arr[0],groupType),prefix=(groupType==='class'||key.startsWith('class::'))?'Lop_':(groupType==='room'||key.startsWith('room::'))?'Phong_':'Nhom_';add(prefix+safeKeyFileName(label.replace(/^Lớp |^Phòng /,'')),historyExcelAoa(arr));
+    });
+    const parts=['OMR_Diem'];
+    if(f.test)parts.push(safeKeyFileName(f.test));
+    if(f.subject)parts.push(safeKeyFileName(f.subject));
+    if(f.target){const h=rows[0];parts.push(safeKeyFileName(historyGroupLabel(h)))}
+    else if(f.type)parts.push(f.type==='class'?'Theo_lop':'Theo_phong');
+    parts.push(new Date().toISOString().slice(0,10));
+    XLSX.writeFile(wb,parts.join('_')+'.xlsx');
+    if(status)status.textContent=`Đã xuất ${rows.length} kết quả ra Excel • ${groups.size} lớp/phòng.`;
+  }catch(e){console.error(e);if(status)status.textContent='Xuất Excel thất bại.';alert('Không xuất được Excel: '+(e?.message||e))}
+}
+
 function renderHistory(){
-  const his=getHistory();
+  renderRosterManager();
+  refreshHistoryFilterOptions();
+  const his=historyFilteredRows();
   $('#historyBody').innerHTML=his.map(h=>{
     const imageCell=h.imageId
       ?`<div class="historyImageActions"><button class="imgViewBtn" onclick="viewGradeImage('${esc(h.imageId)}','${esc(h.id||'')}')">Xem</button><button class="imgDownloadBtn" onclick="downloadGradeImage('${esc(h.imageId)}','${esc(h.id||'')}')">Tải</button><button class="imgDeleteBtn" onclick="removeGradeImage('${esc(h.imageId)}','${esc(h.id||'')}')">Xóa ảnh</button></div>`
       :`<span class="noImageBadge">${h.imageExpired?'Đã tự xóa':'Không có ảnh'}</span>`;
-    return `<tr><td>${new Date(h.time).toLocaleString('vi-VN')}</td><td>${esc(h.student||'')}</td><td>${esc(h.target?(h.targetType==='class'?'Lớp ':'Phòng ')+h.target:'')}</td><td>${esc(h.examCode||'')}</td><td>${esc(h.templateName)}</td><td>${h.mcCorrect}/${h.mcTotal}</td><td>${h.tfRaw}/${h.tfTotal}</td><td>${h.shortCorrect}/${h.shortTotal}</td><td>${h.score}/${h.max}</td><td>${imageCell}</td></tr>`
+    return `<tr><td>${new Date(h.time).toLocaleString('vi-VN')}</td><td>${esc(h.student||'')}</td><td>${esc(historyGroupLabel(h))}</td><td>${esc(h.candidateId||'')}</td><td>${esc(h.examCode||'')}</td><td>${esc(h.templateName)}</td><td>${h.mcCorrect}/${h.mcTotal}</td><td>${h.tfRaw}/${h.tfTotal}</td><td>${h.shortCorrect}/${h.shortTotal}</td><td>${h.score}/${h.max}</td><td>${imageCell}</td></tr>`
   }).join('');
   refreshPdfGroupOptions();
 }
@@ -2008,11 +2153,23 @@ window.removeGradeImage=async(imageId,resultId='')=>{
 };
 $('#downloadViewerImage').onclick=()=>{if(currentViewerImageId){const h=getHistory().find(x=>x.imageId===currentViewerImageId);downloadGradeImage(currentViewerImageId,h?.id||'')}};
 
-$('#exportCsv').onclick=()=>{const his=getHistory();let csv='\ufeffThời gian,Học sinh,Lớp/Phòng,Loại kiểm tra,Môn,Mã đề,Mẫu,Đúng phần I,Tổng I,Điểm phần II,Số câu II,Đúng phần III,Tổng III,Điểm tổng,Thang điểm,Ảnh đã lưu\n'+his.map(h=>[new Date(h.time).toLocaleString('vi-VN'),h.student,h.target?(h.targetType==='class'?'Lớp ':'Phòng ')+h.target:'',h.testName||'',h.subject||'',h.examCode,h.templateName,h.mcCorrect,h.mcTotal,h.tfRaw,h.tfTotal,h.shortCorrect,h.shortTotal,h.score,h.max,h.imageId?'Có':'Không'].map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ket_qua_OMR_auto.csv';a.click()}
+$('#downloadRosterTemplate').onclick=downloadRosterTemplate;
+$('#importRosterBtn').onclick=()=>$('#rosterFileInput').click();
+$('#rosterFileInput').onchange=async e=>{const f=e.target.files?.[0];if(f)await importRosterFile(f);e.target.value=''};
+$('#applyRosterHistory').onclick=applyRosterToExistingHistory;
+$('#clearRosterBtn').onclick=()=>{if(studentRoster.length&&confirm('Xóa toàn bộ danh sách học sinh đã nhập?')){studentRoster=[];saveRoster();renderHistory()}};
+$('#historyFilterTest').onchange=renderHistory;
+$('#historyFilterSubject').onchange=renderHistory;
+$('#historyFilterType').onchange=()=>{$('#historyFilterTarget').value='';renderHistory()};
+$('#historyFilterTarget').onchange=renderHistory;
+$('#clearHistoryFilter').onclick=()=>{['historyFilterTest','historyFilterSubject','historyFilterType','historyFilterTarget'].forEach(id=>{$('#'+id).value=''});renderHistory()};
+$('#exportHistoryExcel').onclick=exportHistoryExcel;
+
+$('#exportCsv').onclick=()=>{const his=getHistory();let csv='\ufeffThời gian,Học sinh,Lớp,Phòng,Số hiệu/SBD,Loại kiểm tra,Môn,Mã đề,Mẫu,Đúng phần I,Tổng I,Điểm phần II,Số câu II,Đúng phần III,Tổng III,Điểm tổng,Thang điểm,Ảnh đã lưu\n'+his.map(h=>[new Date(h.time).toLocaleString('vi-VN'),h.student,historyClassValue(h),historyRoomValue(h),h.candidateId||'',h.testName||'',h.subject||'',h.examCode,h.templateName,h.mcCorrect,h.mcTotal,h.tfRaw,h.tfTotal,h.shortCorrect,h.shortTotal,h.score,h.max,h.imageId?'Có':'Không'].map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ket_qua_OMR_auto.csv';a.click()}
 window.addEventListener('resize',fitSheet);
 lockAppToLogin('Đang kết nối hệ thống…');
 bindSectionToggle('mcEnabled','mcConfigRow');bindSectionToggle('tfEnabled','tfConfigRow');bindSectionToggle('shortEnabled','shortConfigRow');
 updateExamOrganizationUI();loadAssignments();migrate();templates.forEach(normalizeTemplate);cleanupAssignments();saveAll();
-currentProfile={};renderAccountState();initImageSettings();refreshSelects();fitSheet();
+currentProfile={};renderAccountState();initImageSettings();refreshSelects();fitSheet();renderRosterManager();
 applyImageRetention().then(()=>renderHistory()).catch(()=>{});
 initFirebaseFromSaved().then(ok=>{if(!ok)lockAppToLogin('Không kết nối được Firebase. Vui lòng kiểm tra mạng hoặc liên hệ Super Admin.')});

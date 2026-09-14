@@ -2,8 +2,8 @@ export default function AppHeader() {
   return (
     <header>
       <div>
-        <h1>OMR Mobile v4.1</h1>
-        <small>Auto OMR v2 • 4 marker chính + 6 marker phụ • Tự đọc mã đề</small>
+        <h1>OMR Mobile v4.3</h1>
+        <small>Auto OMR v2 • Tự đọc Số hiệu/SBD + Mã đề • 4 marker chính + 6 marker phụ</small>
       </div>
       <div className="accountHeader">
         <span className="reactVersionTag">React</span>
