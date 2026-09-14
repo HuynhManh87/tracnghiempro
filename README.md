@@ -253,3 +253,14 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Tọa độ in và tọa độ OMR cập nhật đồng bộ.
 - Vùng đo độ đậm Phần III dùng cùng bán kính với Phần I để tăng độ ổn định.
 - Nên in lại phiếu mới từ v4.17 để Phần III khớp hoàn toàn với engine mới.
+
+
+## v4.18 — Sửa dứt điểm vòng tròn Phần II bị dính nhau
+
+- Nguyên nhân: `.tfBubble` dùng `box-sizing: content-box`, làm đường kính hiển thị thực tế ~14.5px dù khai báo 12px.
+- Sửa thành `box-sizing: border-box`, đúng như Phần I.
+- Đường kính hiển thị thực tế Phần II: 12px.
+- Khoảng cách tâm theo chiều dọc: 14px.
+- Khoảng hở giữa hai vòng liên tiếp: 2px.
+- Không đổi tọa độ tâm OMR nên không làm lệch engine nhận dạng.
+- Giữ nguyên toàn bộ cải tiến Phần III từ v4.17.

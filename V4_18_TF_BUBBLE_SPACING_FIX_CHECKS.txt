@@ -1,0 +1,8 @@
+OMR Mobile v4.18 — Part II bubble spacing fix
+
+PASS - TF circles use 12px width/height like Part I
+PASS - TF circles use box-sizing:border-box like Part I
+PASS - TF center-to-center vertical spacing remains 14px
+PASS - Visual gap between adjacent TF circles is 2px
+PASS - OMR center coordinates unchanged, so detection remains aligned
+PASS - Part III v4.17 geometry retained
