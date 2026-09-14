@@ -10,7 +10,7 @@ export function loadOmrEngine(){
     s.async=false;
     s.dataset.omrEngine='v4';
     s.onload=()=>{window.__OMR_ENGINE_READY__=true;resolve();};
-    s.onerror=()=>reject(new Error('Không tải được OMR Engine v4.3'));
+    s.onerror=()=>reject(new Error('Không tải được OMR Engine v4.3.1'));
     document.body.appendChild(s);
   });
   return enginePromise;

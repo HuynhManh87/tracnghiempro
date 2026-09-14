@@ -1,4 +1,4 @@
-# OMR Mobile React v4.3
+# OMR Mobile React v4.3.1
 
 Bản React/Vite chuyển từ OMR Mobile v3.63.
 
@@ -101,3 +101,10 @@ Sau khi nâng lên v4.1, nên in lại phiếu để có 6 marker phụ Auto OMR
 ### Quy ước
 - Số hiệu/SBD dùng 3 chữ số: `1 → 001`, `12 → 012`, `125 → 125`.
 - Khi in: A4 dọc, 100% / Actual size, không Fit/Shrink.
+
+
+## v4.3.1 — Chỉnh khoảng cách Số thứ tự / Mã đề
+- Dịch nhóm `Mã đề` + ô vuông viết tay ở đầu phiếu sang phải **26px**.
+- Áp dụng cho dòng thông tin có `Mã phách – Số thứ tự – Mã đề`.
+- Không di chuyển khối `TÔ MÃ ĐỀ` phía dưới.
+- Không thay đổi tọa độ `buildLayout()` của camera OMR.

@@ -1,0 +1,6 @@
+OMR Mobile React v4.3.1
+PASS - Dịch Mã đề đầu phiếu sang phải 26px.
+PASS - Khoảng cách với Số thứ tự tăng lên.
+PASS - Khối TÔ MÃ ĐỀ dùng cho camera không đổi.
+PASS - buildLayout / tọa độ OMR không đổi.
+PASS - public/omr-engine-v4.js qua node --check.
