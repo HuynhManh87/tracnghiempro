@@ -1,0 +1,8 @@
+OMR Mobile v4.19 — Dual image history checks
+1. Save result creates originalImageId and imageId (graded).
+2. Graded image contains only green/red/yellow answer rings on clean source image.
+3. Original image is stored separately and never painted.
+4. History exposes Đã chấm / Ảnh gốc.
+5. Viewer switches between both variants.
+6. Delete removes both local/cloud variants.
+7. Old history with imageId only remains readable.

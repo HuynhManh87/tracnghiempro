@@ -264,3 +264,21 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Khoảng hở giữa hai vòng liên tiếp: 2px.
 - Không đổi tọa độ tâm OMR nên không làm lệch engine nhận dạng.
 - Giữ nguyên toàn bộ cải tiến Phần III từ v4.17.
+
+
+## v4.19 — Lưu song song ảnh gốc và ảnh đã chấm màu
+- Khi lưu kết quả, app lưu hai ảnh độc lập: ảnh gốc và ảnh đã chấm.
+- Ảnh đã chấm chỉ đóng dấu vòng màu: xanh = đúng, đỏ = học sinh chọn sai, vàng = đáp án đúng khi học sinh sai/bỏ trống.
+- Ảnh gốc không bị chỉnh sửa.
+- Lịch sử có nút `Đã chấm` và `Ảnh gốc`; trình xem ảnh cũng chuyển được giữa hai bản.
+- IndexedDB và Firebase Storage lưu hai bản bằng hai ID/đường dẫn khác nhau.
+- Dữ liệu lịch sử cũ chỉ có một ảnh vẫn tương thích.
+
+
+## v4.20 — Full-screen Free Scan
+- Camera quét mở dạng toàn màn hình, không còn khung canh phiếu cố định.
+- Engine tự tìm 4 marker góc trên toàn bộ khung camera và vẽ đường viền theo đúng tờ phiếu được phát hiện.
+- Khi đủ marker, marker phụ và mã đề hợp lệ trong khoảng 0,8 giây, app tự lấy ảnh HD và chấm; không cần bấm nút chụp.
+- Sau khi chấm, kết quả vẫn hiển thị ngay trên camera. Nút Lưu nằm trực tiếp trên giao diện camera toàn màn hình.
+- Sau khi lưu, app chờ giáo viên lấy phiếu ra. Khi mất phiếu trong 2 nhịp quét liên tiếp, app tự reset và sẵn sàng bài tiếp theo.
+- Giữ nguyên cơ chế lưu ảnh gốc + ảnh đã chấm màu của v4.19.

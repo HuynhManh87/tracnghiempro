@@ -1,0 +1,11 @@
+OMR Mobile v4.20 — Full-screen Free Scan checks
+
+1. Mở Camera: liveCameraStage có class open + freeScan và body khóa cuộn.
+2. Không còn liveGuideFrame trong fragment; không yêu cầu canh phiếu theo khung cố định.
+3. autoDetectMarkers vẫn quét toàn bộ frame; 4 marker được nối thành viền xanh đúng theo tờ phiếu thực tế.
+4. Đủ điều kiện khoảng 0,8 giây -> captureLiveAndGrade() tự lấy ảnh HD và chấm.
+5. Sau chấm: camera tiếp tục hiển thị, kết quả nổi trên camera, nút Lưu ở topbar.
+6. Sau Lưu: liveCurrentSaved=true; app chờ phiếu rời camera.
+7. Mất marker 2 nhịp liên tiếp sau khi đã lưu -> resumeLiveForNextSheet(), tự sẵn sàng bài tiếp theo.
+8. Thoát camera: dọn class full-screen và stop stream.
+9. Vẫn giữ ảnh gốc + ảnh đã chấm màu v4.19.

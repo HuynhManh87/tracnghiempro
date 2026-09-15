@@ -33,3 +33,10 @@ Tính năng xuất điểm Excel được bổ sung ở tab Lịch sử mà khô
 
 ## v4.3
 Bổ sung nhận diện học sinh OMR và danh sách học sinh. Không đổi cấu trúc Authentication, Firestore Rules hay Storage Rules. Dữ liệu `roster` được lưu bên trong `teachers/{uid}/app/state.stateJson`.
+
+## v4.20 — Full-screen Free Scan
+- Chế độ camera realtime chuyển sang lớp camera toàn màn hình, không còn khung canh giấy cố định.
+- Nếu 4 marker không nằm trong 4 ROI góc của khung hình, engine có fallback tìm marker chính trên toàn frame rồi chọn tứ giác phiếu phù hợp.
+- Overlay nối 4 marker thành viền xanh theo đúng vị trí phiếu thật.
+- Sau khi tự chấm, camera không đóng. Kết quả và nút Lưu hiển thị ngay trên camera.
+- Sau khi lưu, khi phiếu rời camera 2 nhịp quét liên tiếp, app tự reset để nhận bài tiếp theo.
