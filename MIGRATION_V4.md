@@ -47,3 +47,11 @@ Bổ sung nhận diện học sinh OMR và danh sách học sinh. Không đổi 
 - Hết 4 giây, nếu phiếu cũ vẫn còn trước camera thì kết quả vẫn tiếp tục khóa; app chỉ yêu cầu lấy phiếu ra.
 - Chỉ mở quét bài mới khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,2 giây.
 - Điểm trước khi ảnh HD chấm chỉ ghi **Xem trước**, tách rõ khỏi kết quả chính thức.
+
+
+## v4.22 — Scan Once / one-shot grading
+- Camera preview không còn chấm đáp án hay hiển thị điểm xem trước.
+- Preview chỉ tìm phiếu, kiểm tra Auto OMR v2 và đọc Mã đề.
+- Phiếu hợp lệ khoảng 0,8 giây sẽ kích hoạt đúng một lần chụp HD và chấm.
+- Kết quả chính thức khóa tối thiểu 5 giây; cùng phiếu vẫn còn trong camera không thể kích hoạt chấm lần nữa.
+- Chỉ reset khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,8 giây.

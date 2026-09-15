@@ -1,0 +1,7 @@
+OMR Mobile v4.22 — Scan Once checks
+1. Preview does NOT call realtimeEvaluate or render preview score.
+2. Valid sheet triggers exactly one HD capture/grade.
+3. Official result is locked for at least 5 seconds.
+4. Same sheet cannot re-trigger while markers remain visible.
+5. New scan requires saved result + continuous sheet absence >= 1.8s.
+6. Camera save path sets liveCurrentSaved for liveCamera/liveRealtime results.

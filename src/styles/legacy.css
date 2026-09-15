@@ -414,3 +414,6 @@ body.liveFreeScanOpen{overflow:hidden!important;touch-action:none}
 }
 .liveCameraStage.open.freeScan .liveRealtimeScore.locked .liveRtExam{color:#bbf7d0;font-size:15px;letter-spacing:.02em}
 .liveCameraStage.open.freeScan .liveRealtimeScore.locked .liveRtTotal{font-size:34px;line-height:1.05;margin-top:5px;color:#fff}
+
+/* ===== v4.22 — Scan Once ===== */
+.liveRealtimeScore.locked{pointer-events:auto}

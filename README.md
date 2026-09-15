@@ -289,3 +289,12 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Hết 4 giây, nếu phiếu cũ vẫn còn trước camera thì kết quả vẫn tiếp tục khóa; app chỉ yêu cầu lấy phiếu ra.
 - Chỉ mở quét bài mới khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,2 giây.
 - Điểm trước khi ảnh HD chấm chỉ ghi **Xem trước**, tách rõ khỏi kết quả chính thức.
+
+
+## v4.22 — Scan Once / chấm đúng một lần mỗi phiếu
+- Bỏ hoàn toàn điểm xem trước realtime A/B/C/D/Đ-S/TLN trên luồng camera.
+- Preview chỉ tìm phiếu, kiểm tra marker/chất lượng và đọc mã đề.
+- Khi phiếu hợp lệ ~0,8 giây, camera chụp đúng 1 ảnh HD và chấm đúng 1 lần.
+- Kết quả chính thức khóa tối thiểu 5 giây; cùng một phiếu còn trong camera tuyệt đối không chấm lại.
+- Chỉ mở quét bài mới sau khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,8 giây.
+- Sửa cờ `liveRealtime` để thao tác Lưu trong camera cập nhật đúng trạng thái đã lưu.

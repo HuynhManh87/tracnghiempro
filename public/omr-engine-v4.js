@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=780,liveReadyGraceMs=1250,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=4000,liveRemovalSince=0,liveRemovalRequiredMs=1200;
+let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=780,liveReadyGraceMs=1250,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=5000,liveRemovalSince=0,liveRemovalRequiredMs=1800;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.21'
+    appVersion:'4.22'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.21',
+    appVersion:'4.22',
     storageFormat:'json-v1'
   };
 }
@@ -1190,7 +1190,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.21',
+    appVersion:'4.22',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1227,7 +1227,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.21',
+    appVersion:'4.22',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -2122,24 +2122,24 @@ async function captureLiveAndGrade(){
   liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang chụp khung hình HD để đọc Số hiệu/SBD, Mã đề và chấm…','ok');
   try{
     const good=await freezeLiveFrame();
-    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;resetLiveReady();setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
+    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
     const t=cur($('#scanTpl').value),finalExam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
-    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;resetLiveReady();setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Ảnh HD vẫn chưa đọc đủ Mã đề. Hãy kiểm tra mỗi cột TÔ MÃ ĐỀ chỉ tô 1 vòng tròn, tô đậm hơn và giữ giấy phẳng.':`Ảnh HD đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
+    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;resetLiveReady();setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Ảnh HD vẫn chưa đọc đủ Mã đề. Hãy kiểm tra mỗi cột TÔ MÃ ĐỀ chỉ tô 1 vòng tròn, tô đậm hơn và giữ giấy phẳng.':`Ảnh HD đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
     grade();
     if(lastGrade){
-      lastGrade.liveCamera=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
+      lastGrade.liveCamera=true;lastGrade.liveRealtime=true;lastGrade.scanOnce=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
       liveAwaitRemoval=true;liveRemovalMisses=0;liveCurrentSaved=false;livePaused=false;resetLiveReady();
       liveResultLocked=true;liveResultLockUntil=Date.now()+liveResultHoldMs;liveRemovalSince=0;
       if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='none';
       if($('#liveFreeSave'))$('#liveFreeSave').disabled=false;
       renderFinalLiveResult(lastGrade);
-      setLiveStatus(`KẾT QUẢ ${lastGrade.score}/${lastGrade.max} • đang giữ cố định ${(liveResultHoldMs/1000).toFixed(0)} giây. Có thể bấm Lưu trong lúc này.`,'ok');
+      setLiveStatus(`KẾT QUẢ ${lastGrade.score}/${lastGrade.max} • đã chấm 1 lần • giữ cố định ${(liveResultHoldMs/1000).toFixed(0)} giây. App sẽ không chấm lại tờ này.`,'ok');
       if(navigator.vibrate)try{navigator.vibrate([90,45,90])}catch{}
     }else{
-      livePaused=false;liveStableFrames=0;livePrevMarkers=null;resetLiveReady();setLiveStatus('Chưa tạo được kết quả. Điều chỉnh phiếu và thử lại.','warn');
+      livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Chưa tạo được kết quả. Điều chỉnh phiếu và thử lại.','warn');
     }
   }catch(e){
-    console.error(e);livePaused=false;liveStableFrames=0;livePrevMarkers=null;resetLiveReady();setLiveStatus('Lỗi lấy khung hình: '+(e?.message||e),'err');
+    console.error(e);livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Lỗi lấy khung hình: '+(e?.message||e),'err');
   }finally{liveBusy=false}
 }
 function scheduleLiveProcessing(delay=0){
@@ -2221,30 +2221,32 @@ function processLiveFrame(){
       setLiveHud(4,q?.auxCount??0,0,'bad','---',false,held);
       setLiveStatus(held>0?'Chất lượng dao động 1 khung — chưa reset tiến trình. Giữ phiếu trong khung.':(q?.message||'Ảnh chưa đạt chuẩn.'),'warn');return;
     }
-    const L=buildLayout(t),gridLock=lockRecognitionGrids(L),answerLock=lockAnswerGrids(L),rex=examCodeCheck(t,L);
+    const L=buildLayout(t),gridLock=lockRecognitionGrids(L),rex=examCodeCheck(t,L);
     if(rex.bad||!rex.exists){
       const held=holdLiveReady();resetRealtimeResult();presentLiveProcessedFrame();
       setLiveHud(4,q?.auxCount??0,0,'bad',rex.bad?'???':rex.value,false,held);
       setLiveStatus(held>0?'Mã đề dao động thoáng qua — app vẫn giữ tiến trình.':(rex.bad?'Đã khóa phiếu nhưng chưa đọc đủ Mã đề. Giữ phiếu rõ và phẳng.':`Đọc mã ${rex.value}, chưa có trong mẫu hiện tại.`),'warn');return;
     }
-    const v=t.versions.find(x=>x.code===rex.value),rt=realtimeEvaluate(t,L,v,rex.value);
-
-    // v4.11: AutoScan theo thời gian hiện diện hợp lệ, KHÔNG phụ thuộc rung marker
-    // và KHÔNG phụ thuộc đáp án realtime có giống 100% giữa các frame hay không.
-    // Realtime chỉ xác nhận: đúng phiếu + đủ marker + mã đề hợp lệ.
-    // Khi đạt thời gian yêu cầu, ảnh HD mới là nguồn dùng để chấm chính thức.
+    // v4.22 — SCAN ONCE: tuyệt đối không chấm đáp án trên các frame preview.
+    // Preview chỉ làm 3 việc: tìm phiếu, kiểm tra chất lượng, đọc Mã đề.
+    // Khi phiếu hợp lệ đủ thời gian, app chụp đúng MỘT ảnh HD và chỉ ảnh đó
+    // mới được dùng để tính điểm. Nhờ vậy điểm không còn nhảy 7 -> 6.5 -> 7
+    // trong lúc giáo viên đang giữ cùng một tờ trước camera.
     const readyMs=markLiveReady(rex.value);
-    presentLiveProcessedFrame(rt);renderRealtimeResult(rt,rex.value,true);
+    resetRealtimeResult();
+    presentLiveProcessedFrame();
     setLiveHud(4,q?.auxCount??0,0,'good',rex.value,true,readyMs);
 
     if(!liveReadyComplete(readyMs)){
       const remain=Math.max(0,liveReadyRequiredMs-readyMs);
-      setLiveStatus(`Đã nhận Mã ${rex.value} • Tổng xem trước ${rt.total}. Tự chụp sau ${(remain/1000).toFixed(1)} giây…`,'ok');
+      setLiveStatus(`Đã nhận phiếu • Mã ${rex.value} • sẽ chấm 1 lần sau ${(remain/1000).toFixed(1)} giây…`,'ok');
     }else if(liveAutoScan&&Date.now()>=liveAutoCooldownUntil){
-      liveAutoCooldownUntil=Date.now()+1800;
-      setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • Đang tự chụp HD và chấm…`,'ok');
+      // Khóa cò ngay trước khi gọi async để không một frame nào có thể kích hoạt lần hai.
+      liveAutoCooldownUntil=Number.MAX_SAFE_INTEGER;
+      resetLiveReady();
+      setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • đang chụp 1 ảnh HD và chấm 1 lần…`,'ok');
       void captureLiveAndGrade();
-    }else setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • Tổng xem trước ${rt.total}.`,'ok');
+    }else setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • đang chờ kết quả chính thức…`,'ok');
   }catch(e){console.warn('Realtime OMR frame error',e);holdLiveReady();resetRealtimeResult();setLiveStatus('Không xử lý được khung hình camera.','err')}
 }
 function updateCameraDiag(extra=''){
@@ -2901,7 +2903,7 @@ $('#saveResult').onclick=async()=>{
   if(row.candidateId){const dup=his.find(h=>h.candidateId===row.candidateId&&h.targetType===row.targetType&&h.target===row.target&&h.testName===row.testName&&h.subject===row.subject);if(dup&&!confirm(`Đã có kết quả của ${row.student||row.candidateId} trong cùng lớp/phòng và đợt kiểm tra. Vẫn lưu thêm kết quả này?`)){btn.disabled=false;return}}
   his.unshift(row);saveHistory(his);
   await applyImageRetention();renderHistory();btn.disabled=false;
-  if(row.liveRealtime){liveCurrentSaved=true;liveAwaitRemoval=true;liveRemovalMisses=0;if(!liveRemovalSince)liveRemovalSince=0;renderFinalLiveResult(lastGrade);if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;setLiveStatus(`Đã lưu ${row.student||row.candidateId||'bài làm'} • ${row.score}/${row.max}. ${imageMsg} Lấy phiếu ra khỏi camera để quét bài tiếp theo.`,row.imageId||mode==='none'?'ok':'warn')}else alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}${row.liveCamera?'\nBấm Quét bài tiếp theo để tiếp tục.':''}`);
+  if(row.liveRealtime||row.liveCamera){liveCurrentSaved=true;liveAwaitRemoval=true;liveRemovalMisses=0;if(!liveRemovalSince)liveRemovalSince=0;renderFinalLiveResult(lastGrade);if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;setLiveStatus(`Đã lưu ${row.student||row.candidateId||'bài làm'} • ${row.score}/${row.max}. ${imageMsg} Lấy phiếu ra khỏi camera để quét bài tiếp theo.`,row.imageId||mode==='none'?'ok':'warn')}else alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}${row.liveCamera?'\nBấm Quét bài tiếp theo để tiếp tục.':''}`);
 }
 function historyClassValue(h){return String(h?.studentClass||(h?.targetType==='class'?h.target:'')||'').trim()}
 function historyRoomValue(h){return normalizeRosterRoom(h?.studentRoom||(h?.targetType==='room'?h.target:'')||'')}
