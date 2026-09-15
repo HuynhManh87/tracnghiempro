@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=780,liveReadyGraceMs=1250,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false;
+let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=780,liveReadyGraceMs=1250,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=4000,liveRemovalSince=0,liveRemovalRequiredMs=1200;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.20'
+    appVersion:'4.21'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.20',
+    appVersion:'4.21',
     storageFormat:'json-v1'
   };
 }
@@ -1190,7 +1190,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.20',
+    appVersion:'4.21',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1227,7 +1227,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.20',
+    appVersion:'4.21',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -2000,7 +2000,7 @@ function updateTorchButton(){
   btn.disabled=!liveRunning||!supported;btn.textContent=liveTorchOn?'Tắt đèn':'Bật đèn';
 }
 function stopLiveCamera(keepMessage=false){
-  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;resetLiveReady();
+  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
   if(liveTimer){clearTimeout(liveTimer);liveTimer=null}
   if(liveStream){liveStream.getTracks().forEach(t=>{try{t.stop()}catch{}});liveStream=null}
   const video=$('#liveVideo');if(video){try{video.pause()}catch{};video.srcObject=null}
@@ -2102,6 +2102,21 @@ async function freezeLiveFrame(){
   try{if(cap.mode==='photo'&&cap.source?.close)cap.source.close()}catch{}
   return ok&&scanQuality?.ok;
 }
+function renderFinalLiveResult(g=lastGrade){
+  if(!g)return;
+  const box=$('#liveRealtimeScore');if(box){box.classList.add('show','locked')}
+  const t=cur($('#scanTpl').value);
+  if($('#liveRtExam'))$('#liveRtExam').textContent=`KẾT QUẢ CHÍNH THỨC • Mã ${g.examCode||'---'}`;
+  if($('#liveRtP1'))$('#liveRtP1').textContent=`P1: ${Number.isFinite(+g.mcPoints)?g.mcPoints:'--'}`;
+  if($('#liveRtP2'))$('#liveRtP2').textContent=`P2: ${Number.isFinite(+g.tfPoints)?g.tfPoints:'--'}`;
+  if($('#liveRtP3'))$('#liveRtP3').textContent=`P3: ${Number.isFinite(+g.shortPoints)?g.shortPoints:'--'}`;
+  if($('#liveRtTotal'))$('#liveRtTotal').textContent=`${g.score} / ${g.max}`;
+  if($('#liveRtStudent'))$('#liveRtStudent').textContent=[g.candidateId?`${candidateLabelForTemplate(t)}: ${g.candidateId}`:'',g.studentFromRoster,g.studentClass?`Lớp ${g.studentClass}`:''].filter(Boolean).join(' • ');
+}
+function clearLiveResultLock(){
+  liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;
+  $('#liveRealtimeScore')?.classList.remove('locked');
+}
 async function captureLiveAndGrade(){
   if(liveBusy||livePaused)return;
   liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang chụp khung hình HD để đọc Số hiệu/SBD, Mã đề và chấm…','ok');
@@ -2114,10 +2129,12 @@ async function captureLiveAndGrade(){
     if(lastGrade){
       lastGrade.liveCamera=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
       liveAwaitRemoval=true;liveRemovalMisses=0;liveCurrentSaved=false;livePaused=false;resetLiveReady();
+      liveResultLocked=true;liveResultLockUntil=Date.now()+liveResultHoldMs;liveRemovalSince=0;
       if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='none';
       if($('#liveFreeSave'))$('#liveFreeSave').disabled=false;
-      setLiveStatus(`Đã chấm ${lastGrade.score}/${lastGrade.max}. Bấm Lưu, sau đó lấy phiếu ra để quét bài tiếp theo.`,'ok');
-      if(navigator.vibrate)try{navigator.vibrate([80,40,80])}catch{}
+      renderFinalLiveResult(lastGrade);
+      setLiveStatus(`KẾT QUẢ ${lastGrade.score}/${lastGrade.max} • đang giữ cố định ${(liveResultHoldMs/1000).toFixed(0)} giây. Có thể bấm Lưu trong lúc này.`,'ok');
+      if(navigator.vibrate)try{navigator.vibrate([90,45,90])}catch{}
     }else{
       livePaused=false;liveStableFrames=0;livePrevMarkers=null;resetLiveReady();setLiveStatus('Chưa tạo được kết quả. Điều chỉnh phiếu và thử lại.','warn');
     }
@@ -2152,6 +2169,30 @@ function processLiveFrame(){
     const perf=livePerformanceProfile();drawVideoFrameToScanCanvas(video,perf.maxSide);
     imgState={img:video,file:null,url:null,livePreview:true};manualMode=false;markerPoints=[];resetScanQuality();
     const ok=autoDetectMarkers();
+    if(liveResultLocked){
+      const now=Date.now(),remain=Math.max(0,liveResultLockUntil-now);
+      renderFinalLiveResult(lastGrade);
+      if(ok){
+        liveRemovalSince=0;
+        if(remain>0)setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} • giữ cố định ${(remain/1000).toFixed(1)} giây…`,'ok');
+        else if(liveCurrentSaved)setLiveStatus(`Đã lưu • ${lastGrade?.score??'--'}/${lastGrade?.max??'--'}. Lấy phiếu hiện tại ra khỏi camera để quét bài tiếp theo.`,'ok');
+        else setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} đang khóa. Bấm Lưu, rồi lấy phiếu ra để quét bài tiếp theo.`,'ok');
+      }else{
+        if(!liveRemovalSince)liveRemovalSince=now;
+        const goneMs=now-liveRemovalSince;
+        if(remain>0){
+          setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} • vẫn giữ cố định ${(remain/1000).toFixed(1)} giây…`,'ok');
+        }else if(!liveCurrentSaved){
+          setLiveStatus(`Phiếu đã rời camera nhưng kết quả ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} chưa lưu. Bấm Lưu để không mất kết quả.`,'warn');
+        }else if(goneMs>=liveRemovalRequiredMs){
+          setLiveStatus('Đã xác nhận phiếu cũ rời camera. Sẵn sàng bài tiếp theo…','ok');
+          resumeLiveForNextSheet();
+        }else{
+          setLiveStatus(`Đã lưu • đang xác nhận phiếu cũ đã rời camera ${(goneMs/1000).toFixed(1)}/${(liveRemovalRequiredMs/1000).toFixed(1)}s…`,'ok');
+        }
+      }
+      return;
+    }
     if(liveAwaitRemoval){
       if(!ok){
         liveRemovalMisses++;
@@ -2264,7 +2305,7 @@ async function startLiveCamera(){
     await waitForVideoReady(video);
     try{await video.play()}catch(e){console.warn('video.play() chưa chạy ngay trên thiết bị này',e)}
     if(!video.videoWidth)await waitForVideoReady(video,3000);
-    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;resetLiveReady();
+    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
     $('#liveCameraStage')?.classList.add('open','freeScan');document.body.classList.add('liveFreeScanOpen');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
     if($('#captureLiveNow'))$('#captureLiveNow').disabled=false;
     const perf=livePerformanceProfile();
@@ -2286,7 +2327,7 @@ async function toggleLiveTorch(){
 }
 function resumeLiveForNextSheet(){
   if(!liveRunning){startLiveCamera();return}
-  clearResult();resetRealtimeResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;resetLiveReady();
+  clearLiveResultLock();clearResult();resetRealtimeResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
   $('#nextLiveSheet').style.display='none';setLiveHud('--','--',0);setLiveStatus('Sẵn sàng. Đưa bài tiếp theo vào vùng camera.');
 }
 $('#startLiveCamera').onclick=startLiveCamera;
@@ -2796,7 +2837,7 @@ function presentLiveProcessedFrame(rt=null){
   for(const x of rt.sh){const detected=[];if(x.signDark)detected.push(x.layout.sign);x.commaSelected.forEach(i=>{if(x.layout.commas[i])detected.push(x.layout.commas[i])});x.digitSel.forEach(d=>d.selected.forEach(i=>{if(d.points[i])detected.push(d.points[i])}));if(x.ok)detected.forEach(p=>drawLiveOverlayRing(g,liveSheetToOverlay(p,geo),GREEN,dpr));else{detected.forEach(p=>drawLiveOverlayRing(g,liveSheetToOverlay(p,geo),RED,dpr));x.keyMarks.forEach(p=>drawLiveOverlayRing(g,liveSheetToOverlay(p,geo),YELLOW,dpr))}}
 }
 function resetRealtimeResult(){
-  realtimeSignature='';realtimeStableCount=0;realtimeLast=null;$('#liveRealtimeScore')?.classList.remove('show');if($('#saveResult'))$('#saveResult').disabled=true;if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;
+  realtimeSignature='';realtimeStableCount=0;realtimeLast=null;$('#liveRealtimeScore')?.classList.remove('show','locked');if($('#saveResult'))$('#saveResult').disabled=true;if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;
 }
 function renderRealtimeResult(rt,examCode,stableEligible=true){
   if(!rt)return;
@@ -2809,7 +2850,7 @@ function renderRealtimeResult(rt,examCode,stableEligible=true){
   else if(realtimeSignature===rt.signature)realtimeStableCount=Math.min(3,realtimeStableCount+1);else{realtimeSignature=rt.signature;realtimeStableCount=1}
   realtimeLast=rt;
   const t=cur($('#scanTpl').value);
-  $('#liveRealtimeScore')?.classList.add('show');$('#liveRtExam').textContent=`Mã đề ${examCode}`;$('#liveRtP1').textContent=`P1: ${rt.mcPoints}`;$('#liveRtP2').textContent=`P2: ${rt.tfPoints}`;$('#liveRtP3').textContent=`P3: ${rt.shortPoints}`;$('#liveRtTotal').textContent=`Tổng: ${rt.total}`;$('#liveRtStudent').textContent=[rt.candidateId?`${candidateLabelForTemplate(t)}: ${rt.candidateId}`:'',rt.resolvedStudent,rt.resolvedClass?`Lớp ${rt.resolvedClass}`:''].filter(Boolean).join(' • ');
+  $('#liveRealtimeScore')?.classList.remove('locked');$('#liveRealtimeScore')?.classList.add('show');$('#liveRtExam').textContent=`ĐANG ĐỌC • Mã đề ${examCode}`;$('#liveRtP1').textContent=`P1: ${rt.mcPoints}`;$('#liveRtP2').textContent=`P2: ${rt.tfPoints}`;$('#liveRtP3').textContent=`P3: ${rt.shortPoints}`;$('#liveRtTotal').textContent=`Xem trước: ${rt.total}`;$('#liveRtStudent').textContent=[rt.candidateId?`${candidateLabelForTemplate(t)}: ${rt.candidateId}`:'',rt.resolvedStudent,rt.resolvedClass?`Lớp ${rt.resolvedClass}`:''].filter(Boolean).join(' • ');
   $('#detectedIdLabel').textContent=targetTypeForTemplate(t)==='room'?'SBD nhận được':'Số hiệu nhận được';$('#detectedId').textContent=rt.candidateId||'Không đọc được';$('#detectedExam').textContent=examCode;$('#scoreBox').textContent=`${rt.total} / ${t.maxScore}`;$('#mcScore').textContent=t.mcCount?`${rt.mcCorrect}/${t.mcCount}`:'—';$('#tfScore').textContent=t.tfCount?`${rt.tfRaw.toFixed(2)}/${(t.tfCount*4*t.tfItemScore).toFixed(2)}`:'—';$('#shortScore').textContent=t.shortCount?`${rt.shCorrect}/${t.shortCount}`:'—';
   if(rt.resolvedStudent){$('#studentName').value=rt.resolvedStudent;$('#studentLookupStatus').className='studentLookupStatus ok';$('#studentLookupStatus').textContent=`${rt.candidateId} → ${rt.resolvedStudent}${rt.resolvedClass?' • Lớp '+rt.resolvedClass:''}`}
   $('#gradeSummary').innerHTML=`Realtime OMR • Mã <b>${esc(examCode)}</b> • I <b>${rt.mcPoints}</b> • II <b>${rt.tfPoints}</b> • III <b>${rt.shortPoints}</b> • Tổng <b>${rt.total}</b>.`;
@@ -2860,7 +2901,7 @@ $('#saveResult').onclick=async()=>{
   if(row.candidateId){const dup=his.find(h=>h.candidateId===row.candidateId&&h.targetType===row.targetType&&h.target===row.target&&h.testName===row.testName&&h.subject===row.subject);if(dup&&!confirm(`Đã có kết quả của ${row.student||row.candidateId} trong cùng lớp/phòng và đợt kiểm tra. Vẫn lưu thêm kết quả này?`)){btn.disabled=false;return}}
   his.unshift(row);saveHistory(his);
   await applyImageRetention();renderHistory();btn.disabled=false;
-  if(row.liveRealtime){liveCurrentSaved=true;liveAwaitRemoval=true;liveRemovalMisses=0;if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;setLiveStatus(`Đã lưu ${row.student||row.candidateId||'bài làm'} • ${row.score}/${row.max}. ${imageMsg} Lấy phiếu ra khỏi camera để quét bài tiếp theo.`,row.imageId||mode==='none'?'ok':'warn')}else alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}${row.liveCamera?'\nBấm Quét bài tiếp theo để tiếp tục.':''}`);
+  if(row.liveRealtime){liveCurrentSaved=true;liveAwaitRemoval=true;liveRemovalMisses=0;if(!liveRemovalSince)liveRemovalSince=0;renderFinalLiveResult(lastGrade);if($('#liveFreeSave'))$('#liveFreeSave').disabled=true;setLiveStatus(`Đã lưu ${row.student||row.candidateId||'bài làm'} • ${row.score}/${row.max}. ${imageMsg} Lấy phiếu ra khỏi camera để quét bài tiếp theo.`,row.imageId||mode==='none'?'ok':'warn')}else alert(`Đã lưu kết quả trên thiết bị. ${imageMsg}${row.liveCamera?'\nBấm Quét bài tiếp theo để tiếp tục.':''}`);
 }
 function historyClassValue(h){return String(h?.studentClass||(h?.targetType==='class'?h.target:'')||'').trim()}
 function historyRoomValue(h){return normalizeRosterRoom(h?.studentRoom||(h?.targetType==='room'?h.target:'')||'')}

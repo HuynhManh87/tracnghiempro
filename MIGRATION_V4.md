@@ -40,3 +40,10 @@ Bổ sung nhận diện học sinh OMR và danh sách học sinh. Không đổi 
 - Overlay nối 4 marker thành viền xanh theo đúng vị trí phiếu thật.
 - Sau khi tự chấm, camera không đóng. Kết quả và nút Lưu hiển thị ngay trên camera.
 - Sau khi lưu, khi phiếu rời camera 2 nhịp quét liên tiếp, app tự reset để nhận bài tiếp theo.
+
+## v4.21 — Result Hold Lock / chống quét lặp cùng một bài
+- Sau khi ảnh HD chấm xong, điểm được coi là **KẾT QUẢ CHÍNH THỨC** và khóa cứng 4 giây.
+- Trong 4 giây này engine không chấm lại, không cập nhật điểm từ frame realtime và không cho cùng một phiếu dao động 7 → 6,5.
+- Hết 4 giây, nếu phiếu cũ vẫn còn trước camera thì kết quả vẫn tiếp tục khóa; app chỉ yêu cầu lấy phiếu ra.
+- Chỉ mở quét bài mới khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,2 giây.
+- Điểm trước khi ảnh HD chấm chỉ ghi **Xem trước**, tách rõ khỏi kết quả chính thức.

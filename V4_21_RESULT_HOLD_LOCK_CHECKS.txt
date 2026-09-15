@@ -1,0 +1,8 @@
+OMR Mobile v4.21 — Result Hold Lock checks
+
+1. Realtime score is labelled Xem trước.
+2. HD grading creates KẾT QUẢ CHÍNH THỨC and hard-locks score for 4 seconds.
+3. processLiveFrame never grades while liveResultLocked=true.
+4. After 4 seconds, same sheet remains locked until removed.
+5. Next sheet is armed only after current result is saved and markers are absent continuously >=1.2 seconds.
+6. Full-screen Free Scan and dual-image history from v4.20/v4.19 are preserved.

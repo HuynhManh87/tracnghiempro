@@ -282,3 +282,10 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Sau khi chấm, kết quả vẫn hiển thị ngay trên camera. Nút Lưu nằm trực tiếp trên giao diện camera toàn màn hình.
 - Sau khi lưu, app chờ giáo viên lấy phiếu ra. Khi mất phiếu trong 2 nhịp quét liên tiếp, app tự reset và sẵn sàng bài tiếp theo.
 - Giữ nguyên cơ chế lưu ảnh gốc + ảnh đã chấm màu của v4.19.
+
+## v4.21 — Result Hold Lock / chống quét lặp cùng một bài
+- Sau khi ảnh HD chấm xong, điểm được coi là **KẾT QUẢ CHÍNH THỨC** và khóa cứng 4 giây.
+- Trong 4 giây này engine không chấm lại, không cập nhật điểm từ frame realtime và không cho cùng một phiếu dao động 7 → 6,5.
+- Hết 4 giây, nếu phiếu cũ vẫn còn trước camera thì kết quả vẫn tiếp tục khóa; app chỉ yêu cầu lấy phiếu ra.
+- Chỉ mở quét bài mới khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,2 giây.
+- Điểm trước khi ảnh HD chấm chỉ ghi **Xem trước**, tách rõ khỏi kết quả chính thức.
