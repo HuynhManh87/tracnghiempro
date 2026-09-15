@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=420,liveReadyGraceMs=900,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=5000,liveRemovalSince=0,liveRemovalRequiredMs=1800;
+let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=420,liveReadyGraceMs=900,liveScanState='SEARCHING',liveSheetHits=0,liveSheetLastSeen=0,liveSheetRequiredHits=2,liveSheetGraceMs=1400,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=5000,liveRemovalSince=0,liveRemovalRequiredMs=1800;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -1984,12 +1984,12 @@ function setLiveHud(main='--',aux='--',stable=0,state='',exam='---',examOk=false
   if(b){b.textContent=`Marker phụ: ${aux}/6`;b.className='liveHudChip '+(Number(aux)>=4?'ok':aux==='--'?'':'warn')}
   if(e){e.textContent=`Mã đề: ${exam||'---'}`;e.className='liveHudChip '+(examOk?'ok':exam==='---'?'':'warn')}
   if(Number.isFinite(readyMs)){
-    const ms=Math.max(0,Math.min(liveReadyRequiredMs,readyMs));
-    const done=ms>=liveReadyRequiredMs&&liveReadyHits>=2;
-    if(c){c.textContent=`Tự chấm: ${(ms/1000).toFixed(1)}/${(liveReadyRequiredMs/1000).toFixed(1)}s`;c.className='liveHudChip '+(done?'ok':state==='bad'?'warn':'')}
-    if(p)p.style.width=Math.max(0,Math.min(100,ms/liveReadyRequiredMs*100))+'%';
+    const hits=Math.max(0,Math.min(liveSheetRequiredHits,Number(readyMs)||0));
+    const done=hits>=liveSheetRequiredHits;
+    if(c){c.textContent=`Nhận phiếu: ${hits}/${liveSheetRequiredHits}`;c.className='liveHudChip '+(done?'ok':state==='bad'?'warn':'')}
+    if(p)p.style.width=Math.max(0,Math.min(100,hits/liveSheetRequiredHits*100))+'%';
   }else{
-    if(c){c.textContent=`Tự chấm: chờ phiếu`;c.className='liveHudChip '+(state==='bad'?'warn':'')}
+    if(c){c.textContent=liveScanState==='CAPTURING'?'Đang chụp & chấm…':'Đang tìm phiếu…';c.className='liveHudChip '+(state==='bad'?'warn':'')}
     if(p)p.style.width='0%';
   }
 }
@@ -2000,7 +2000,7 @@ function updateTorchButton(){
   btn.disabled=!liveRunning||!supported;btn.textContent=liveTorchOn?'Tắt đèn':'Bật đèn';
 }
 function stopLiveCamera(keepMessage=false){
-  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
+  liveRunning=false;liveBusy=false;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveTorchOn=false;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;setLiveScanState('SEARCHING');resetLiveSheetGate();resetLiveReady();
   if(liveTimer){clearTimeout(liveTimer);liveTimer=null}
   if(liveStream){liveStream.getTracks().forEach(t=>{try{t.stop()}catch{}});liveStream=null}
   const video=$('#liveVideo');if(video){try{video.pause()}catch{};video.srcObject=null}
@@ -2047,6 +2047,21 @@ function holdLiveReady(){
   return Math.max(0,liveReadyLastSeen-liveReadySince);
 }
 function liveReadyComplete(ms){return ms>=liveReadyRequiredMs&&liveReadyHits>=2}
+// v4.25 — State machine Scan Once đơn giản. Không dùng timer preview để kích hoạt chấm.
+function resetLiveSheetGate(){liveSheetHits=0;liveSheetLastSeen=0}
+function noteLiveSheetHit(){
+  const now=Date.now();
+  if(!liveSheetLastSeen||now-liveSheetLastSeen>liveSheetGraceMs)liveSheetHits=0;
+  liveSheetHits=Math.min(liveSheetRequiredHits,liveSheetHits+1);
+  liveSheetLastSeen=now;
+  return liveSheetHits;
+}
+function noteLiveSheetMiss(){
+  const now=Date.now();
+  if(liveSheetLastSeen&&now-liveSheetLastSeen>liveSheetGraceMs)resetLiveSheetGate();
+  return liveSheetHits;
+}
+function setLiveScanState(next){liveScanState=next}
 
 function livePerformanceProfile(){
   const mem=Number(navigator.deviceMemory||0),cores=Number(navigator.hardwareConcurrency||0);
@@ -2120,28 +2135,38 @@ function clearLiveResultLock(){
   $('#liveRealtimeScore')?.classList.remove('locked');
 }
 async function captureLiveAndGrade(){
-  if(liveBusy||livePaused)return;
-  liveBusy=true;livePaused=true;setLiveStatus('Ảnh đã ổn định. Đang chụp khung hình HD để đọc Số hiệu/SBD, Mã đề và chấm…','ok');
+  if(liveBusy||liveResultLocked||liveScanState==='RESULT_LOCKED')return;
+  setLiveScanState('CAPTURING');
+  liveBusy=true;livePaused=true;resetLiveSheetGate();
+  setLiveStatus('Đã khóa phiếu • đang lấy đúng 1 ảnh để chấm…','ok');
+  setLiveHud(4,scanQuality?.auxCount??'--',0,'good','đọc trên ảnh',false,null);
   try{
     const good=await freezeLiveFrame();
-    if(!good){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Khung vừa lấy chưa đạt chuẩn. Tiếp tục giữ phiếu trong khung.','warn');return}
+    if(!good){
+      setLiveScanState('SEARCHING');livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=Date.now()+500;resetLiveSheetGate();resetLiveReady();
+      setLiveStatus('Ảnh chụp chưa đạt chuẩn. App đã mở lại quét; giữ đủ 4 góc phiếu và thử lại.','warn');return;
+    }
     const t=cur($('#scanTpl').value),finalExam=t?examCodeCheck(t):{value:'???',bad:true,exists:false,expected:[]};
-    if(finalExam.bad||!finalExam.exists){livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;resetLiveReady();setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false);setLiveStatus(finalExam.bad?'Ảnh HD vẫn chưa đọc đủ Mã đề. Hãy kiểm tra mỗi cột TÔ MÃ ĐỀ chỉ tô 1 vòng tròn, tô đậm hơn và giữ giấy phẳng.':`Ảnh HD đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return}
+    if(finalExam.bad||!finalExam.exists){
+      setLiveScanState('SEARCHING');livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=Date.now()+650;resetLiveSheetGate();resetLiveReady();
+      setLiveHud(4,scanQuality?.auxCount??0,0,'bad',finalExam.bad?'???':finalExam.value,false,null);
+      setLiveStatus(finalExam.bad?'Ảnh chụp chưa đọc chắc Mã đề. App sẽ tự thử lại; giữ nguyên phiếu, tránh rung.':`Đọc được mã ${finalExam.value} nhưng mã này không thuộc mẫu hiện tại (${finalExam.expected.join(', ')}).`,'warn');return;
+    }
     grade();
     if(lastGrade){
-      lastGrade.liveCamera=true;lastGrade.liveRealtime=true;lastGrade.scanOnce=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
-      liveAwaitRemoval=true;liveRemovalMisses=0;liveCurrentSaved=false;livePaused=false;resetLiveReady();
-      liveResultLocked=true;liveResultLockUntil=Date.now()+liveResultHoldMs;liveRemovalSince=0;
+      lastGrade.liveCamera=true;lastGrade.liveRealtime=false;lastGrade.scanOnce=true;lastGrade.liveCaptureMode=imgState?.liveCaptureMode||'video';
+      liveAwaitRemoval=true;liveRemovalMisses=0;liveCurrentSaved=false;livePaused=false;resetLiveReady();resetLiveSheetGate();
+      liveResultLocked=true;liveResultLockUntil=Date.now()+liveResultHoldMs;liveRemovalSince=0;setLiveScanState('RESULT_LOCKED');
       if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='none';
       if($('#liveFreeSave'))$('#liveFreeSave').disabled=false;
       renderFinalLiveResult(lastGrade);
-      setLiveStatus(`KẾT QUẢ ${lastGrade.score}/${lastGrade.max} • đã chấm 1 lần • giữ cố định ${(liveResultHoldMs/1000).toFixed(0)} giây. App sẽ không chấm lại tờ này.`,'ok');
+      setLiveStatus(`KẾT QUẢ CHÍNH THỨC ${lastGrade.score}/${lastGrade.max} • đã chấm đúng 1 lần. Bấm Lưu rồi lấy phiếu ra.`,'ok');
       if(navigator.vibrate)try{navigator.vibrate([90,45,90])}catch{}
     }else{
-      livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Chưa tạo được kết quả. Điều chỉnh phiếu và thử lại.','warn');
+      setLiveScanState('SEARCHING');livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=Date.now()+500;resetLiveSheetGate();resetLiveReady();setLiveStatus('Chưa tạo được kết quả. App đã mở lại quét; giữ phiếu rõ và thử lại.','warn');
     }
   }catch(e){
-    console.error(e);livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=0;resetLiveReady();setLiveStatus('Lỗi lấy khung hình: '+(e?.message||e),'err');
+    console.error(e);setLiveScanState('SEARCHING');livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=Date.now()+700;resetLiveSheetGate();resetLiveReady();setLiveStatus('Lỗi lấy/chấm ảnh: '+(e?.message||e),'err');
   }finally{liveBusy=false}
 }
 function scheduleLiveProcessing(delay=0){
@@ -2171,86 +2196,58 @@ function processLiveFrame(){
     const perf=livePerformanceProfile();drawVideoFrameToScanCanvas(video,perf.maxSide);
     imgState={img:video,file:null,url:null,livePreview:true};manualMode=false;markerPoints=[];resetScanQuality();
     const ok=autoDetectMarkers();
-    if(liveResultLocked){
+
+    if(liveResultLocked||liveScanState==='RESULT_LOCKED'){
       const now=Date.now(),remain=Math.max(0,liveResultLockUntil-now);
       renderFinalLiveResult(lastGrade);
       if(ok){
         liveRemovalSince=0;
         if(remain>0)setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} • giữ cố định ${(remain/1000).toFixed(1)} giây…`,'ok');
-        else if(liveCurrentSaved)setLiveStatus(`Đã lưu • ${lastGrade?.score??'--'}/${lastGrade?.max??'--'}. Lấy phiếu hiện tại ra khỏi camera để quét bài tiếp theo.`,'ok');
-        else setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} đang khóa. Bấm Lưu, rồi lấy phiếu ra để quét bài tiếp theo.`,'ok');
+        else if(liveCurrentSaved)setLiveStatus(`Đã lưu • ${lastGrade?.score??'--'}/${lastGrade?.max??'--'}. Lấy phiếu hiện tại ra để quét bài tiếp theo.`,'ok');
+        else setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} đang khóa. Bấm Lưu, rồi lấy phiếu ra.`,'ok');
       }else{
         if(!liveRemovalSince)liveRemovalSince=now;
         const goneMs=now-liveRemovalSince;
-        if(remain>0){
-          setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} • vẫn giữ cố định ${(remain/1000).toFixed(1)} giây…`,'ok');
-        }else if(!liveCurrentSaved){
-          setLiveStatus(`Phiếu đã rời camera nhưng kết quả ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} chưa lưu. Bấm Lưu để không mất kết quả.`,'warn');
-        }else if(goneMs>=liveRemovalRequiredMs){
-          setLiveStatus('Đã xác nhận phiếu cũ rời camera. Sẵn sàng bài tiếp theo…','ok');
-          resumeLiveForNextSheet();
-        }else{
-          setLiveStatus(`Đã lưu • đang xác nhận phiếu cũ đã rời camera ${(goneMs/1000).toFixed(1)}/${(liveRemovalRequiredMs/1000).toFixed(1)}s…`,'ok');
-        }
+        if(remain>0)setLiveStatus(`KẾT QUẢ ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} • vẫn giữ cố định ${(remain/1000).toFixed(1)} giây…`,'ok');
+        else if(!liveCurrentSaved)setLiveStatus(`Phiếu đã rời camera nhưng kết quả ${lastGrade?.score??'--'}/${lastGrade?.max??'--'} chưa lưu. Bấm Lưu để không mất kết quả.`,'warn');
+        else if(goneMs>=liveRemovalRequiredMs){setLiveStatus('Đã xác nhận phiếu cũ rời camera. Sẵn sàng bài tiếp theo…','ok');resumeLiveForNextSheet();}
+        else setLiveStatus(`Đã lưu • đang xác nhận phiếu cũ đã rời camera ${(goneMs/1000).toFixed(1)}/${(liveRemovalRequiredMs/1000).toFixed(1)}s…`,'ok');
       }
       return;
     }
-    if(liveAwaitRemoval){
-      if(!ok){
-        liveRemovalMisses++;
-        presentLiveProcessedFrame();
-        if(liveCurrentSaved&&liveRemovalMisses>=2){
-          setLiveStatus('Đã lấy phiếu ra. Đang sẵn sàng bài tiếp theo…','ok');
-          resumeLiveForNextSheet();
-        }else if(liveCurrentSaved)setLiveStatus('Đã lưu. Lấy phiếu ra khỏi camera để quét bài tiếp theo.','ok');
-        else setLiveStatus('Phiếu đã rời camera nhưng kết quả chưa lưu. Bấm Lưu để giữ kết quả.','warn');
-      }else{
-        liveRemovalMisses=0;scanQuality=analyzeScanQuality();presentLiveProcessedFrame();
-        setLiveStatus(liveCurrentSaved?`Đã lưu ${lastGrade?.score??''}/${lastGrade?.max??''}. Lấy phiếu ra để quét bài tiếp theo.`:`Đã chấm ${lastGrade?.score??''}/${lastGrade?.max??''}. Bấm Lưu rồi lấy phiếu ra.`,'ok');
-      }
-      return;
-    }
+    if(liveScanState==='CAPTURING')return;
+
     if(!ok){
-      const held=holdLiveReady();livePrevMarkers=null;resetRealtimeResult();presentLiveProcessedFrame();
-      setLiveHud(0,0,0,'bad','---',false,held);
-      setLiveStatus(held>0?'Mất marker thoáng qua — app vẫn giữ tiến trình tự chấm. Đưa trọn phiếu lại vào vùng camera.':'Đang tìm phiếu… Hãy đưa toàn bộ tờ A4 vào vùng camera.','warn');return;
+      const hits=noteLiveSheetMiss();livePrevMarkers=null;resetRealtimeResult();presentLiveProcessedFrame();
+      setLiveHud(0,0,0,'bad','---',false,hits);
+      setLiveStatus(hits>0?'Mất marker thoáng qua — vẫn giữ lần nhận trước. Đưa đủ 4 góc phiếu trở lại.':'Đang tìm phiếu… Hãy đưa toàn bộ tờ A4 vào camera.','warn');return;
     }
+
     scanQuality=analyzeScanQuality();updateScanQualityUI();
-    const current=markerPoints.map(p=>({x:p.x,y:p.y})),q=scanQuality;
-    livePrevMarkers=current;
-
-    // v4.24 — FAST SHEET GATE. Preview không đọc Mã đề, SBD hay đáp án.
-    // Chỉ kiểm tra hình học tờ phiếu. Marker phụ có thể dao động trong preview mà
-    // không được phép chặn cò; ảnh HD sau đó mới áp dụng kiểm tra OMR đầy đủ.
-    const pageArea=Number(q?.pageAreaRatio||0);
-    const previewGeometryGood=!!q && q.mainMarkers===4 && pageArea>=AUTO_OMR_V2.minPageAreaRatio*.82;
-    if(!previewGeometryGood){
-      const held=holdLiveReady();resetRealtimeResult();presentLiveProcessedFrame();
-      setLiveHud(4,q?.auxCount??0,0,'bad','HD',false,held);
-      setLiveStatus(held>0?'Phiếu lệch/mờ thoáng qua — vẫn giữ tiến trình. Giữ đủ 4 góc trong camera.':(q?.message||'Đang căn phiếu…'),'warn');return;
+    const q=scanQuality;livePrevMarkers=markerPoints.map(p=>({x:p.x,y:p.y}));
+    const aux=Number(q?.auxCount||0),v2Enough=(q?.mode!=='v2'||aux>=4);
+    if(!v2Enough){
+      const hits=noteLiveSheetMiss();resetRealtimeResult();presentLiveProcessedFrame();
+      setLiveHud(4,aux,0,'bad','đọc sau',false,hits);
+      setLiveStatus(`Đã thấy 4 góc nhưng marker phụ mới ${aux}/6. Đưa phiếu trọn hơn vào camera.`,'warn');return;
     }
 
-    // Hai nhịp nhận tờ phiếu là đủ. Không Grid Lock và không đọc Mã đề trên preview.
-    const readyMs=markLiveReady('sheet');
-    resetRealtimeResult();
-    presentLiveProcessedFrame();
-    setLiveHud(4,q?.auxCount??0,0,'good','đọc HD',false,readyMs);
+    const hits=noteLiveSheetHit();
+    resetRealtimeResult();presentLiveProcessedFrame();
+    setLiveHud(4,aux,0,'good','đọc sau',false,hits);
+    if(hits<liveSheetRequiredHits){
+      setLiveStatus(`Đã nhận phiếu ${hits}/${liveSheetRequiredHits} • giữ nguyên một nhịp nữa…`,'ok');return;
+    }
+    if(!liveAutoScan){setLiveStatus('Đã nhận phiếu. Tự chấm đang tắt; dùng “Chụp & chấm ngay”.','warn');return;}
+    if(Date.now()<liveAutoCooldownUntil){setLiveStatus('Đang chờ thử lại ảnh chụp…','warn');return;}
 
-    if(!liveReadyComplete(readyMs)){
-      const remain=Math.max(0,liveReadyRequiredMs-readyMs);
-      setLiveStatus(`Đã nhận phiếu • khóa chụp sau ${(remain/1000).toFixed(1)} giây…`,'ok');
-    }else if(liveAutoScan&&Date.now()>=liveAutoCooldownUntil){
-      // Khóa cò TRƯỚC async: cùng một phiếu không thể kích hoạt lần thứ hai.
-      liveAutoCooldownUntil=Number.MAX_SAFE_INTEGER;
-      livePaused=true;
-      resetLiveReady();
-      setLiveStatus('Đã khóa phiếu • đang lấy 1 ảnh HD duy nhất → đọc Mã đề → chấm 1 lần…','ok');
-      // captureLiveAndGrade tự quản lý liveBusy/livePaused. Hạ paused tạm để hàm được vào,
-      // nhưng cooldown đã khóa cứng nên không frame preview nào có thể kích hoạt thêm.
-      livePaused=false;
-      void captureLiveAndGrade();
-    }else setLiveStatus('Đã khóa phiếu • đang chờ kết quả chính thức…','ok');
-  }catch(e){console.warn('Realtime OMR frame error',e);holdLiveReady();resetRealtimeResult();setLiveStatus('Không xử lý được khung hình camera.','err')}
+    setLiveScanState('CAPTURING');resetLiveSheetGate();
+    setLiveHud(4,aux,0,'good','đọc trên ảnh',false,null);
+    setLiveStatus('Đã nhận phiếu 2/2 • chụp & chấm đúng 1 lần…','ok');
+    void captureLiveAndGrade();
+  }catch(e){
+    console.warn('Scan Once frame error',e);noteLiveSheetMiss();resetRealtimeResult();setLiveStatus('Không xử lý được khung camera; app sẽ tự thử lại.','err');
+  }
 }
 function updateCameraDiag(extra=''){
   const e=$('#liveCameraDiag');if(!e)return;
@@ -2273,6 +2270,7 @@ async function requestCameraStream(){
   const attempts=[
     // Preview ưu tiên 720p để camera mượt. Khi tự chấm, ImageCapture.takePhoto()
     // vẫn cố lấy ảnh tĩnh ở độ phân giải cảm biến nếu trình duyệt hỗ trợ.
+    {audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:1920,max:1920},height:{ideal:1080,max:1080},frameRate:{ideal:30,max:30}}},
     {audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:1280,max:1280},height:{ideal:720,max:720},frameRate:{ideal:30,max:30}}},
     {audio:false,video:{facingMode:{ideal:liveFacingMode},width:{ideal:960},height:{ideal:540},frameRate:{ideal:30,max:30}}},
     {audio:false,video:{facingMode:{ideal:liveFacingMode}}},
@@ -2310,7 +2308,7 @@ async function startLiveCamera(){
     await waitForVideoReady(video);
     try{await video.play()}catch(e){console.warn('video.play() chưa chạy ngay trên thiết bị này',e)}
     if(!video.videoWidth)await waitForVideoReady(video,3000);
-    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
+    liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;setLiveScanState('SEARCHING');resetLiveSheetGate();resetLiveReady();
     $('#liveCameraStage')?.classList.add('open','freeScan');document.body.classList.add('liveFreeScanOpen');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
     if($('#captureLiveNow'))$('#captureLiveNow').disabled=false;
     const perf=livePerformanceProfile();
@@ -2332,7 +2330,7 @@ async function toggleLiveTorch(){
 }
 function resumeLiveForNextSheet(){
   if(!liveRunning){startLiveCamera();return}
-  clearLiveResultLock();clearResult();resetRealtimeResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;resetLiveReady();
+  clearLiveResultLock();clearResult();resetRealtimeResult();imgState=null;markerPoints=[];H=null;resetScanQuality();livePaused=false;liveBusy=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;setLiveScanState('SEARCHING');resetLiveSheetGate();resetLiveReady();
   $('#nextLiveSheet').style.display='none';setLiveHud('--','--',0);setLiveStatus('Sẵn sàng. Đưa bài tiếp theo vào vùng camera.');
 }
 $('#startLiveCamera').onclick=startLiveCamera;
@@ -2341,7 +2339,7 @@ if($('#autoLiveGrade')){
   liveAutoScan=$('#autoLiveGrade').checked!==false;
   $('#autoLiveGrade').onchange=()=>{
     liveAutoScan=$('#autoLiveGrade').checked;
-    resetRealtimeResult();liveAutoCooldownUntil=0;resetLiveReady();
+    resetRealtimeResult();liveAutoCooldownUntil=0;resetLiveSheetGate();if(!liveResultLocked)setLiveScanState('SEARCHING');resetLiveReady();
     if(liveRunning)setLiveStatus(liveAutoScan?'Tự chấm đã bật. Đưa phiếu vào khung và giữ yên.':'Tự chấm đã tắt. Dùng nút “Chụp & chấm ngay”.',liveAutoScan?'ok':'warn');
   };
 }

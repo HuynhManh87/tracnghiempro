@@ -309,7 +309,7 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Giữ nguyên Scan Once v4.22 và toàn bộ dữ liệu/Firebase hiện có.
 
 
-## v4.24 — HD-Only Scan Once
+## v4.25 — HD-Only Scan Once
 - Preview camera chỉ phát hiện 4 marker và hình học tờ phiếu; **không đọc Mã đề/SBD/đáp án trên preview**.
 - Bỏ nguyên nhân gây kẹt "Mã đề dao động thoáng qua".
 - Hai nhịp nhận phiếu liên tiếp (~0,4–0,6 giây tùy máy) sẽ khóa cò và chụp đúng 1 ảnh HD.

@@ -1,11 +1,11 @@
-const CACHE_NAME = 'omr-mobile-v4.24-shell-v1';
+const CACHE_NAME = 'omr-mobile-v4.25-shell-v1';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
-  '/omr-engine-v4.js?v=4.24-hd-only-scan-once'
+  '/omr-engine-v4.js?v=4.25-state-machine-scan-once'
 ];
 
 async function precacheAppShell(){

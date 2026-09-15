@@ -1,0 +1,6 @@
+OMR Mobile v4.25 — State Machine Scan Once
+- SEARCHING → CAPTURING → RESULT_LOCKED → WAIT_REMOVE → SEARCHING.
+- Preview không đọc Mã đề/đáp án/điểm.
+- Không còn timer 0.4s. Chỉ cần 2 lần nhận phiếu; mất marker thoáng qua <=1.4s không xóa lần nhận trước.
+- Lần 2/2 khóa trạng thái trước async, nên không thể chấm lặp cùng phiếu.
+- iPhone/Safari ưu tiên stream 1080p để ảnh fallback rõ hơn.
