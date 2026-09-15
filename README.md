@@ -1,3 +1,10 @@
+## v4.26 — Chụp dự phòng và chế độ 4 marker
+
+- Thêm nút **CHỤP NGAY** ngay trên camera toàn màn hình.
+- Preview chỉ cần nhận đủ 4 marker góc; marker phụ không còn chặn cò tự chụp.
+- Ảnh HD nhận đủ 4 marker vẫn được chấm khi chỉ thấy 1–3 marker phụ; khi đó app dùng phép căn chỉnh 4 góc.
+- Đổi khóa cache PWA để điện thoại tải đúng engine v4.26 sau khi triển khai.
+
 ## v4.13 — Answer Grid Lock + OMR Diagnostics
 
 Bản này tự khóa lưới Phần I và Phần II vào tâm vòng tròn thực tế trên ảnh trước khi chấm; bảng kết quả hiển thị điểm mực A/B/C/D và Δ để chẩn đoán.

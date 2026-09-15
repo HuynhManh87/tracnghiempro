@@ -2009,6 +2009,7 @@ function stopLiveCamera(keepMessage=false){
   if($('#stopLiveCamera'))$('#stopLiveCamera').disabled=true;
   if($('#switchLiveCamera'))$('#switchLiveCamera').disabled=true;
   if($('#captureLiveNow'))$('#captureLiveNow').disabled=true;
+  if($('#liveFreeCapture'))$('#liveFreeCapture').disabled=true;
   if($('#toggleTorch')){$('#toggleTorch').disabled=true;$('#toggleTorch').textContent='Bật đèn'}
   if($('#nextLiveSheet'))$('#nextLiveSheet').style.display='none';
   setLiveHud('--','--',0);
@@ -2138,6 +2139,7 @@ async function captureLiveAndGrade(){
   if(liveBusy||liveResultLocked||liveScanState==='RESULT_LOCKED')return;
   setLiveScanState('CAPTURING');
   liveBusy=true;livePaused=true;resetLiveSheetGate();
+  if($('#liveFreeCapture'))$('#liveFreeCapture').disabled=true;
   setLiveStatus('Đã khóa phiếu • đang lấy đúng 1 ảnh để chấm…','ok');
   setLiveHud(4,scanQuality?.auxCount??'--',0,'good','đọc trên ảnh',false,null);
   try{
@@ -2167,7 +2169,10 @@ async function captureLiveAndGrade(){
     }
   }catch(e){
     console.error(e);setLiveScanState('SEARCHING');livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveAutoCooldownUntil=Date.now()+700;resetLiveSheetGate();resetLiveReady();setLiveStatus('Lỗi lấy/chấm ảnh: '+(e?.message||e),'err');
-  }finally{liveBusy=false}
+  }finally{
+    liveBusy=false;
+    if($('#liveFreeCapture'))$('#liveFreeCapture').disabled=!liveRunning||liveResultLocked;
+  }
 }
 function scheduleLiveProcessing(delay=0){
   if(!liveRunning)return;
@@ -2225,12 +2230,8 @@ function processLiveFrame(){
 
     scanQuality=analyzeScanQuality();updateScanQualityUI();
     const q=scanQuality;livePrevMarkers=markerPoints.map(p=>({x:p.x,y:p.y}));
-    const aux=Number(q?.auxCount||0),v2Enough=(q?.mode!=='v2'||aux>=4);
-    if(!v2Enough){
-      const hits=noteLiveSheetMiss();resetRealtimeResult();presentLiveProcessedFrame();
-      setLiveHud(4,aux,0,'bad','đọc sau',false,hits);
-      setLiveStatus(`Đã thấy 4 góc nhưng marker phụ mới ${aux}/6. Đưa phiếu trọn hơn vào camera.`,'warn');return;
-    }
+    // v4.26: marker phụ chỉ tăng độ chính xác, không chặn cò chụp.
+    const aux=Number(q?.auxCount||0);
 
     const hits=noteLiveSheetHit();
     resetRealtimeResult();presentLiveProcessedFrame();
@@ -2311,6 +2312,7 @@ async function startLiveCamera(){
     liveRunning=true;livePaused=false;liveStableFrames=0;livePrevMarkers=null;liveExamCode='';liveExamStable=0;liveAutoCooldownUntil=0;liveAwaitRemoval=false;liveRemovalMisses=0;liveCurrentSaved=false;liveResultLocked=false;liveResultLockUntil=0;liveRemovalSince=0;setLiveScanState('SEARCHING');resetLiveSheetGate();resetLiveReady();
     $('#liveCameraStage')?.classList.add('open','freeScan');document.body.classList.add('liveFreeScanOpen');$('#startLiveCamera').disabled=true;$('#stopLiveCamera').disabled=false;$('#switchLiveCamera').disabled=false;
     if($('#captureLiveNow'))$('#captureLiveNow').disabled=false;
+    if($('#liveFreeCapture'))$('#liveFreeCapture').disabled=false;
     const perf=livePerformanceProfile();
     updateTorchButton();setLiveHud('--','--',0);updateCameraDiag(`Đã mở • ${perf.label} ${perf.maxSide}px/${perf.interval}ms`);setLiveStatus(liveAutoScan?'Camera toàn màn hình đã mở. Đưa toàn bộ phiếu vào vùng camera; app tự tìm phiếu và tự chấm.':'Camera đã mở. Chế độ tự chấm đang tắt; dùng nút “Chụp & chấm ngay”.');
     scheduleLiveProcessing(220);
@@ -2335,6 +2337,12 @@ function resumeLiveForNextSheet(){
 }
 $('#startLiveCamera').onclick=startLiveCamera;
 if($('#captureLiveNow'))$('#captureLiveNow').onclick=captureLiveAndGrade;
+// Nút dự phòng luôn nhìn thấy trong giao diện camera toàn màn hình.
+if($('#liveFreeSave')&&!$('#liveFreeCapture')){
+  const b=document.createElement('button');b.className='liveFreeBtn capture';b.id='liveFreeCapture';b.type='button';b.textContent='CHỤP NGAY';
+  $('#liveFreeSave').before(b);
+}
+if($('#liveFreeCapture'))$('#liveFreeCapture').onclick=captureLiveAndGrade;
 if($('#autoLiveGrade')){
   liveAutoScan=$('#autoLiveGrade').checked!==false;
   $('#autoLiveGrade').onchange=()=>{
@@ -2465,7 +2473,7 @@ function analyzeScanQuality(){
   if(wr>AUTO_OMR_V2.maxOppositeEdgeRatio||hr>AUTO_OMR_V2.maxOppositeEdgeRatio)return{ok:false,mode:'none',message:'Ảnh bị nghiêng/phối cảnh quá mạnh. Hãy giữ camera gần vuông góc với tờ giấy.',mainMarkers:4,auxCount:0,pageAreaRatio:areaRatio,localCorrection:false};
   const obs=detectAuxMarkers(),auxCount=obs.filter(o=>o.found).length;
   if(auxCount===0){localCorrection=null;return{ok:true,mode:'legacy',message:'Phiếu 4-marker kiểu cũ: hình học đạt, nhưng chưa có marker phụ Auto OMR v2.',mainMarkers:4,auxCount,pageAreaRatio:areaRatio,localCorrection:false}}
-  if(auxCount<AUTO_OMR_V2.auxRequired){localCorrection=null;return{ok:false,mode:'v2',message:`Chỉ nhận ${auxCount}/6 marker phụ. Có thể giấy bị cong, che khuất hoặc ảnh mờ.`,mainMarkers:4,auxCount,pageAreaRatio:areaRatio,localCorrection:false}}
+  if(auxCount<AUTO_OMR_V2.auxRequired){localCorrection=null;return{ok:true,mode:'fallback4',message:`Đã nhận đủ 4 marker góc. Marker phụ ${auxCount}/6; tiếp tục chấm theo chế độ 4 marker.`,mainMarkers:4,auxCount,pageAreaRatio:areaRatio,localCorrection:false}}
   const corrected=buildLocalCorrection(obs);return{ok:true,mode:'v2',message:`Ảnh đạt chuẩn; nhận ${auxCount}/6 marker phụ và đã hiệu chỉnh biến dạng theo vùng.`,mainMarkers:4,auxCount,pageAreaRatio:areaRatio,localCorrection:corrected}
 }
 function strokeSheetRect(x,y,w,h,color,label){const pts=[mapSheet(x,y),mapSheet(x+w,y),mapSheet(x+w,y+h),mapSheet(x,y+h)];ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.stroke();if(label){ctx.font='700 13px sans-serif';ctx.fillText(label,pts[0].x+4,pts[0].y-5)}ctx.restore()}

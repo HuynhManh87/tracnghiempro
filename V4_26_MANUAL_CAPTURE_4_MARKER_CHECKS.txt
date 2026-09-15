@@ -1,0 +1,8 @@
+OMR Mobile v4.26 — Manual Capture + 4 Marker Fallback
+
+- Camera toàn màn hình có nút CHỤP NGAY.
+- Nút bị khóa trong lúc đang chụp/chấm và sau khi kết quả đã khóa.
+- Preview không yêu cầu marker phụ để kích hoạt tự chụp.
+- Ảnh HD có đủ 4 marker góc được phép chấm khi marker phụ thiếu.
+- Marker phụ vẫn được sử dụng để hiệu chỉnh cục bộ khi nhận đủ tối thiểu 4/6.
+- Cache PWA đổi sang v4.26 để tránh chạy engine v4.25 cũ.
