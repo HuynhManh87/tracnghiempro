@@ -298,3 +298,21 @@ Lưu snapshot đúng bài chấm, kiểm tra IndexedDB sau khi ghi và hiển th
 - Kết quả chính thức khóa tối thiểu 5 giây; cùng một phiếu còn trong camera tuyệt đối không chấm lại.
 - Chỉ mở quét bài mới sau khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,8 giây.
 - Sửa cờ `liveRealtime` để thao tác Lưu trong camera cập nhật đúng trạng thái đã lưu.
+
+## v4.23 — PWA cài đặt trên điện thoại
+- Thêm `manifest.webmanifest`, icon 192/512 và icon maskable.
+- Thêm Service Worker để app đáp ứng tiêu chí cài đặt PWA và cache giao diện tĩnh cơ bản.
+- OMR Engine luôn ưu tiên mạng/không bị Service Worker giữ bản cũ, tránh dùng nhầm thuật toán chấm sau khi cập nhật.
+- Thêm nút **Cài ứng dụng** khi trình duyệt cho phép; iPhone/iPad có hướng dẫn thêm vào Màn hình chính qua Safari.
+- Khi chạy ở chế độ standalone, header hiển thị huy hiệu **PWA**.
+- Tự phát hiện Service Worker phiên bản mới và hiện nút **Có bản mới** để kích hoạt rồi tải lại.
+- Giữ nguyên Scan Once v4.22 và toàn bộ dữ liệu/Firebase hiện có.
+
+
+## v4.24 — HD-Only Scan Once
+- Preview camera chỉ phát hiện 4 marker và hình học tờ phiếu; **không đọc Mã đề/SBD/đáp án trên preview**.
+- Bỏ nguyên nhân gây kẹt "Mã đề dao động thoáng qua".
+- Hai nhịp nhận phiếu liên tiếp (~0,4–0,6 giây tùy máy) sẽ khóa cò và chụp đúng 1 ảnh HD.
+- Chỉ ảnh HD mới đọc Mã đề, SBD và đáp án, sau đó chấm đúng 1 lần.
+- Cùng một phiếu bị khóa hoàn toàn sau khi chấm; chỉ re-arm sau khi đã lưu và phiếu rời camera.
+- Marker phụ có thể dao động ở preview mà không chặn cò; ảnh HD vẫn kiểm tra Auto OMR v2 đầy đủ trước khi chấm.

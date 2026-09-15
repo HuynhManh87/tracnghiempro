@@ -11,7 +11,7 @@ const DEFAULT_FIREBASE_CONFIG={
 };
 const LS_TPL='omr_templates_v3',LS_HIS='omr_history_v3',LS_ASSIGN='omr_assignments_v1',LS_ROSTER='omr_student_roster_v1',LS_IMG_MODE='omr_image_mode_v1',LS_IMG_RET='omr_image_retention_v1',LS_PROFILE='omr_teacher_profile_v1',LS_FB_CONFIG='omr_firebase_config_v1',IMG_DB='omr_mobile_images_v1',IMG_STORE='gradeImages',FIREBASE_SDK='12.18.0';
 const AUTO_OMR_V2={version:'2.0',cornerCenters:[{x:31,y:31},{x:763,y:31},{x:763,y:1092},{x:31,y:1092}],auxRows:[340,640,940],auxX:[31,763],auxSize:10,auxMinDark:.34,auxSearch:16,auxRequired:4,minPageAreaRatio:.18,maxOppositeEdgeRatio:1.9};
-let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=780,liveReadyGraceMs=1250,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=5000,liveRemovalSince=0,liveRemovalRequiredMs=1800;
+let templates=[],assignments={},studentRoster=[],imgState=null,pendingGradeImage=null,pendingGradeAnnotation=null,pendingAnnotatedGradeImage=null,historyThumbUrls=[],markerPoints=[],manualMode=false,lastGrade=null,H=null,imageDbPromise=null,currentViewerImageId=null,currentViewerUrl=null,currentViewerKind='graded',currentViewerResultId='',currentUser=null,currentProfile={},firebaseCtx=null,firebaseModules=null,cloudSyncTimer=null,cloudLoading=false,deviceModeForced=false,currentIsAdmin=false,adminTeacherCache=[],adminSecondaryApp=null,adminDetailUid=null,adminSubjectStatsCache=[],adminClassStatsCache=[],sharedKeyCache=[],auxMarkerObservations=[],scanQuality=null,localCorrection=null,liveStream=null,liveTimer=null,liveRunning=false,liveBusy=false,livePaused=false,liveStableFrames=0,livePrevMarkers=null,liveFacingMode='environment',liveTorchOn=false,liveExamCode='',liveExamStable=0,liveAutoScan=true,liveAutoCooldownUntil=0,gridLockState=null,answerGridLockState=null,realtimeSignature='',realtimeStableCount=0,realtimeLast=null,realtimeBuzzSignature='',liveReadySince=0,liveReadyLastSeen=0,liveReadyExam='',liveReadyHits=0,liveReadyRequiredMs=420,liveReadyGraceMs=900,liveAwaitRemoval=false,liveRemovalMisses=0,liveCurrentSaved=false,liveResultLocked=false,liveResultLockUntil=0,liveResultHoldMs=5000,liveRemovalSince=0,liveRemovalRequiredMs=1800;
 function uid(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function scopeId(){return currentUser?.uid||'device'}
@@ -633,7 +633,7 @@ function currentCloudState(){
     imageMode:getImageMode(),
     imageRetention:getImageRetention(),
     updatedAt:new Date().toISOString(),
-    appVersion:'4.22'
+    appVersion:'4.24'
   };
   const stateJson=JSON.stringify(payload);
   // Firestore rejects nested arrays. Saving the OMR payload as JSON preserves
@@ -642,7 +642,7 @@ function currentCloudState(){
     stateJson,
     stateBytes:new Blob([stateJson]).size,
     updatedAt:payload.updatedAt,
-    appVersion:'4.22',
+    appVersion:'4.24',
     storageFormat:'json-v1'
   };
 }
@@ -1190,7 +1190,7 @@ function makeAnswerKeyPackage(t){
     format:'OMR_MOBILE_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.22',
+    appVersion:'4.24',
     template:{
       name:t.name,
       schoolName:t.schoolName||'',
@@ -1227,7 +1227,7 @@ function makeSharedAnswerKeyPackage(t,meta={}){
     format:'OMR_MOBILE_SHARED_ANSWER_KEY',
     schemaVersion:1,
     exportedAt:new Date().toISOString(),
-    appVersion:'4.22',
+    appVersion:'4.24',
     meta:{
       grade:String(meta.grade||''),
       title:String(meta.title||t.name||'Bộ đáp án dùng chung'),
@@ -2030,10 +2030,12 @@ function liveMarkerMotion(prev,curr){
   return Math.max(center,median);
 }
 function resetLiveReady(){liveReadySince=0;liveReadyLastSeen=0;liveReadyExam='';liveReadyHits=0}
-function markLiveReady(examCode){
+// v4.24 — Preview KHÔNG đọc Mã đề. Cò tự chấm chỉ dựa vào việc cùng một tờ phiếu
+// được nhận qua marker/hình học ở ít nhất 2 nhịp liên tiếp. Mã đề chỉ đọc trên ảnh HD.
+function markLiveReady(sheetToken='sheet'){
   const now=Date.now();
-  if(!liveReadySince||liveReadyExam!==examCode||(liveReadyLastSeen&&now-liveReadyLastSeen>liveReadyGraceMs)){
-    liveReadySince=now;liveReadyExam=examCode;liveReadyHits=1;
+  if(!liveReadySince||liveReadyExam!==sheetToken||(liveReadyLastSeen&&now-liveReadyLastSeen>liveReadyGraceMs)){
+    liveReadySince=now;liveReadyExam=sheetToken;liveReadyHits=1;
   }else liveReadyHits++;
   liveReadyLastSeen=now;
   return Math.max(0,now-liveReadySince);
@@ -2214,39 +2216,40 @@ function processLiveFrame(){
       setLiveStatus(held>0?'Mất marker thoáng qua — app vẫn giữ tiến trình tự chấm. Đưa trọn phiếu lại vào vùng camera.':'Đang tìm phiếu… Hãy đưa toàn bộ tờ A4 vào vùng camera.','warn');return;
     }
     scanQuality=analyzeScanQuality();updateScanQualityUI();
-    const current=markerPoints.map(p=>({x:p.x,y:p.y})),q=scanQuality,t=cur($('#scanTpl').value),qualityGood=!!q?.ok&&q.mode==='v2'&&q.auxCount>=4;
+    const current=markerPoints.map(p=>({x:p.x,y:p.y})),q=scanQuality;
     livePrevMarkers=current;
-    if(!qualityGood){
+
+    // v4.24 — FAST SHEET GATE. Preview không đọc Mã đề, SBD hay đáp án.
+    // Chỉ kiểm tra hình học tờ phiếu. Marker phụ có thể dao động trong preview mà
+    // không được phép chặn cò; ảnh HD sau đó mới áp dụng kiểm tra OMR đầy đủ.
+    const pageArea=Number(q?.pageAreaRatio||0);
+    const previewGeometryGood=!!q && q.mainMarkers===4 && pageArea>=AUTO_OMR_V2.minPageAreaRatio*.82;
+    if(!previewGeometryGood){
       const held=holdLiveReady();resetRealtimeResult();presentLiveProcessedFrame();
-      setLiveHud(4,q?.auxCount??0,0,'bad','---',false,held);
-      setLiveStatus(held>0?'Chất lượng dao động 1 khung — chưa reset tiến trình. Giữ phiếu trong khung.':(q?.message||'Ảnh chưa đạt chuẩn.'),'warn');return;
+      setLiveHud(4,q?.auxCount??0,0,'bad','HD',false,held);
+      setLiveStatus(held>0?'Phiếu lệch/mờ thoáng qua — vẫn giữ tiến trình. Giữ đủ 4 góc trong camera.':(q?.message||'Đang căn phiếu…'),'warn');return;
     }
-    const L=buildLayout(t),gridLock=lockRecognitionGrids(L),rex=examCodeCheck(t,L);
-    if(rex.bad||!rex.exists){
-      const held=holdLiveReady();resetRealtimeResult();presentLiveProcessedFrame();
-      setLiveHud(4,q?.auxCount??0,0,'bad',rex.bad?'???':rex.value,false,held);
-      setLiveStatus(held>0?'Mã đề dao động thoáng qua — app vẫn giữ tiến trình.':(rex.bad?'Đã khóa phiếu nhưng chưa đọc đủ Mã đề. Giữ phiếu rõ và phẳng.':`Đọc mã ${rex.value}, chưa có trong mẫu hiện tại.`),'warn');return;
-    }
-    // v4.22 — SCAN ONCE: tuyệt đối không chấm đáp án trên các frame preview.
-    // Preview chỉ làm 3 việc: tìm phiếu, kiểm tra chất lượng, đọc Mã đề.
-    // Khi phiếu hợp lệ đủ thời gian, app chụp đúng MỘT ảnh HD và chỉ ảnh đó
-    // mới được dùng để tính điểm. Nhờ vậy điểm không còn nhảy 7 -> 6.5 -> 7
-    // trong lúc giáo viên đang giữ cùng một tờ trước camera.
-    const readyMs=markLiveReady(rex.value);
+
+    // Hai nhịp nhận tờ phiếu là đủ. Không Grid Lock và không đọc Mã đề trên preview.
+    const readyMs=markLiveReady('sheet');
     resetRealtimeResult();
     presentLiveProcessedFrame();
-    setLiveHud(4,q?.auxCount??0,0,'good',rex.value,true,readyMs);
+    setLiveHud(4,q?.auxCount??0,0,'good','đọc HD',false,readyMs);
 
     if(!liveReadyComplete(readyMs)){
       const remain=Math.max(0,liveReadyRequiredMs-readyMs);
-      setLiveStatus(`Đã nhận phiếu • Mã ${rex.value} • sẽ chấm 1 lần sau ${(remain/1000).toFixed(1)} giây…`,'ok');
+      setLiveStatus(`Đã nhận phiếu • khóa chụp sau ${(remain/1000).toFixed(1)} giây…`,'ok');
     }else if(liveAutoScan&&Date.now()>=liveAutoCooldownUntil){
-      // Khóa cò ngay trước khi gọi async để không một frame nào có thể kích hoạt lần hai.
+      // Khóa cò TRƯỚC async: cùng một phiếu không thể kích hoạt lần thứ hai.
       liveAutoCooldownUntil=Number.MAX_SAFE_INTEGER;
+      livePaused=true;
       resetLiveReady();
-      setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • đang chụp 1 ảnh HD và chấm 1 lần…`,'ok');
+      setLiveStatus('Đã khóa phiếu • đang lấy 1 ảnh HD duy nhất → đọc Mã đề → chấm 1 lần…','ok');
+      // captureLiveAndGrade tự quản lý liveBusy/livePaused. Hạ paused tạm để hàm được vào,
+      // nhưng cooldown đã khóa cứng nên không frame preview nào có thể kích hoạt thêm.
+      livePaused=false;
       void captureLiveAndGrade();
-    }else setLiveStatus(`Đã khóa phiếu • Mã ${rex.value} • đang chờ kết quả chính thức…`,'ok');
+    }else setLiveStatus('Đã khóa phiếu • đang chờ kết quả chính thức…','ok');
   }catch(e){console.warn('Realtime OMR frame error',e);holdLiveReady();resetRealtimeResult();setLiveStatus('Không xử lý được khung hình camera.','err')}
 }
 function updateCameraDiag(extra=''){

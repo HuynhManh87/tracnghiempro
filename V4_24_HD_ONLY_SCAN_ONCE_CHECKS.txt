@@ -1,0 +1,10 @@
+OMR Mobile v4.24 — HD-Only Scan Once checks
+
+[OK] Preview no longer calls examCodeCheck() before trigger.
+[OK] Preview no longer runs recognition grid lock for exam code.
+[OK] Trigger based on 4 main markers + page geometry only.
+[OK] Trigger requires >=2 preview hits and ~420 ms.
+[OK] Cooldown locks before async HD capture.
+[OK] HD capture performs strict scan-quality check, reads exam code, then grades once.
+[OK] Existing result lock/removal workflow retained.
+[OK] PWA manifest/service worker retained with v4.24 cache name.

@@ -55,3 +55,17 @@ Bổ sung nhận diện học sinh OMR và danh sách học sinh. Không đổi 
 - Phiếu hợp lệ khoảng 0,8 giây sẽ kích hoạt đúng một lần chụp HD và chấm.
 - Kết quả chính thức khóa tối thiểu 5 giây; cùng phiếu vẫn còn trong camera không thể kích hoạt chấm lần nữa.
 - Chỉ reset khi kết quả đã lưu và phiếu cũ biến mất liên tục ít nhất 1,8 giây.
+
+## v4.23 — Installable PWA
+- Nâng web app thành PWA cài được trên Android/desktop và hỗ trợ Add to Home Screen trên iPhone/iPad.
+- Bổ sung manifest, icon, Service Worker, install prompt và update prompt.
+- Không thay đổi thuật toán Scan Once; OMR engine bị loại khỏi runtime cache để luôn nhận bản chấm mới nhất.
+
+
+## v4.24 — HD-Only Scan Once
+- Preview camera chỉ phát hiện 4 marker và hình học tờ phiếu; **không đọc Mã đề/SBD/đáp án trên preview**.
+- Bỏ nguyên nhân gây kẹt "Mã đề dao động thoáng qua".
+- Hai nhịp nhận phiếu liên tiếp (~0,4–0,6 giây tùy máy) sẽ khóa cò và chụp đúng 1 ảnh HD.
+- Chỉ ảnh HD mới đọc Mã đề, SBD và đáp án, sau đó chấm đúng 1 lần.
+- Cùng một phiếu bị khóa hoàn toàn sau khi chấm; chỉ re-arm sau khi đã lưu và phiếu rời camera.
+- Marker phụ có thể dao động ở preview mà không chặn cò; ảnh HD vẫn kiểm tra Auto OMR v2 đầy đủ trước khi chấm.

@@ -1,0 +1,11 @@
+OMR Mobile v4.23 — PWA checks
+
+1. /manifest.webmanifest tồn tại và khai báo display=standalone.
+2. Icon 192x192, 512x512 và maskable 512x512 tồn tại.
+3. /sw.js được đăng ký scope=/.
+4. Service Worker không cache /omr-engine-v4.js để tránh chấm bằng engine cũ.
+5. Android/Chrome: beforeinstallprompt -> nút Cài ứng dụng.
+6. iOS/Safari: nút Cài ứng dụng -> hướng dẫn Share > Thêm vào Màn hình chính.
+7. Chạy standalone: hiển thị huy hiệu PWA.
+8. Có Service Worker mới: hiện Có bản mới -> SKIP_WAITING -> reload.
+9. Scan Once v4.22 giữ nguyên hành vi chấm 1 lần/phiếu.
